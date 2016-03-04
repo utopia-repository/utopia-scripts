@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+import time
+import subprocess
+import sys
+import shutil
+import os
+import re
+
+### BEGIN CONFIGURATION VARIABLES ###
+archs = ("amd64", "i386")
+outdir = "/srv/aptly/public"
+extradists = ["sid-imports"]
+### END CONFIGURATION VARIABLES ###
+
+if not shutil.which('aptly'):
+    print('Error: aptly not found in path!')
+    sys.exit(1)
+
+print('Output directory set to: %s' % outdir)
+repolist = subprocess.check_output(("aptly", "repo", "list", "-raw")).decode('utf-8').splitlines()
+mirrorlist = subprocess.check_output(("aptly", "mirror", "list", "-raw")).decode('utf-8').splitlines()
+repolist += mirrorlist
+repolist += extradists
+snapshotlist = subprocess.check_output(("aptly", "snapshot", "list", "-raw")).decode('utf-8').splitlines()
+
+def plist(dist):
+    packagelist = []
+    unique = set()
+    # Look for the latest snapshot of the dist first (using my personally favourite format ${dist}-YYYY-MM-DD)
+    try:
+        try:
+            _snapshotRe = re.compile(r'^%s-\d{4}-\d{2}-\d{2}' % dist)
+            snapshotname = [s for s in snapshotlist if _snapshotRe.search(s)][-1]
+        except IndexError:  # If that fails, just treat it as a repo
+            print('Using packages in repo %r...' % dist)
+            packages_raw = subprocess.check_output(("aptly", "repo", "show", "-with-packages", dist)).splitlines()
+        else:
+            print('Using packages in snapshot %r...' % snapshotname)
+            packages_raw = subprocess.check_output(("aptly", "snapshot", "show", "-with-packages", snapshotname)).splitlines()
+    except subprocess.CalledProcessError:  # It broke, whatever...
+        return
+    for line in packages_raw:
+        # We can't get a raw list of packages, but all package entries are indented... Use that.
+        if line.startswith(b" "):
+            # s is a string in the format packagename_version_arch
+            s = line.decode("utf-8").strip().split("_")
+            # Expand architecture "all" packages to every arch specified
+            # in archs
+            if s[2] == "source":
+                 unique.add(s[0])
+            if s[2] == "all":
+                for a in archs:
+                    packagelist.append({'pkg': s[0], 'ver': s[1], 
+                                'arch': a})
+            else:
+                packagelist.append({'pkg': s[0], 'ver': s[1], 
+                                'arch': s[2]})
+    # Sort everything by package name
+    packagelist.sort(key=lambda k: k['pkg'])
+
+    os.chdir(outdir)
+    with open('%s_list.html' % dist, 'w') as f:
+        f.write("""<!DOCTYPE HTML>
+<html>
+<head><title>Package List for the Utopia Repository - {}</title>
+<meta charset="UTF-8">
+<meta name=viewport content="width=device-width">
+<link rel="stylesheet" type="text/css" href="gstyle.css">
+</head>
+<body>
+<a href="javascript:history.back()">Go back</a>
+<br><br>
+<table>
+<tr>
+<th>Package Name</th>
+<th>Version</th>
+<th>Architectures</th>
+</tr>""".format(dist))
+        for p in packagelist:
+            f.write(("""<tr><td>{}</td><td>{}</td><td>{}</td></tr>"""
+                .format(p['pkg'], p['ver'], p['arch'])))
+        f.write("""</table>
+<p><b>Total items:</b> {} ({} unique source packages)</p>
+<p>Last updated {}</p>
+</body></html>""".format(len(packagelist), len(unique), time.strftime("%I:%M:%S %p, %b %d %Y +0000", time.gmtime())))
+
+if __name__ == "__main__":
+    try:
+        repolist = [sys.argv[1]]
+    except IndexError:
+        pass
+    for dist in repolist:
+        print('Processing package lists for %r.' % dist)
+        plist(dist)
