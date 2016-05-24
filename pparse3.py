@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # HTML package listing script for aptly servers, as seen on https://packages.overdrivenetworks.com
-# TODO: document exactly what this script does
+# TODO: document exactly what this script does and how it does it.
 import time
 import subprocess
 import sys
@@ -82,7 +82,7 @@ def plist(dist):
 <link rel="stylesheet" type="text/css" href="gstyle.css">
 </head>
 <body>
-<a href="javascript:history.back()">Go back</a>
+<a href="/">Back to root</a>
 <br><br>
 <table>
 <tr>
