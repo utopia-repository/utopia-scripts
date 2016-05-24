@@ -10,6 +10,11 @@ import re
 archs = ("amd64", "i386")
 outdir = "/srv/aptly/public"
 extradists = ["sid-imports"]
+
+# REGEX to look for snapshots for the distribution we're looking up. Defaults to ${dist}-YYYY-MM-DD.
+# If this regex doesn't match a certain distribution, it is treated as its own repository in lookup.
+snapshotregex_base = r'^%s-\d{4}-\d{2}-\d{2}'  # First %s is the distribution name
+
 ### END CONFIGURATION VARIABLES ###
 
 if not shutil.which('aptly'):
@@ -26,11 +31,10 @@ snapshotlist = subprocess.check_output(("aptly", "snapshot", "list", "-raw")).de
 def plist(dist):
     packagelist = []
     unique = set()
-    # Look for the latest snapshot of the dist first (using my personally favourite format ${dist}-YYYY-MM-DD)
+    snapshotregex = re.compile(snapshotregex_base % dist)
     try:
-        try:
-            _snapshotRe = re.compile(r'^%s-\d{4}-\d{2}-\d{2}' % dist)
-            snapshotname = [s for s in snapshotlist if _snapshotRe.search(s)][-1]
+        try:  # Try to find a snapshot matching the distribution
+            snapshotname = [s for s in snapshotlist if snapshotregex.search(s)][-1]
         except IndexError:  # If that fails, just treat it as a repo
             print('Using packages in repo %r...' % dist)
             packages_raw = subprocess.check_output(("aptly", "repo", "show", "-with-packages", dist)).splitlines()
