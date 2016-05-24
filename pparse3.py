@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# HTML package listing script for aptly servers, as seen on https://packages.overdrivenetworks.com
+# TODO: document exactly what this script does
 import time
 import subprocess
 import sys
@@ -7,12 +9,21 @@ import os
 import re
 
 ### BEGIN CONFIGURATION VARIABLES ###
+
+# Sets the folder where the generated package lists should go. This should be the same folder that
+# contains the public dists/ and pool/ folders.
 outdir = "/srv/aptly/public"
+
+# A list of extra distributions to process.
 extradists = ["sid-imports"]
 
 # REGEX to look for snapshots for the distribution we're looking up. Defaults to ${dist}-YYYY-MM-DD.
 # If this regex doesn't match a certain distribution, it is treated as its own repository in lookup.
 snapshotregex_base = r'^%s-\d{4}-\d{2}-\d{2}'  # First %s is the distribution name
+
+# Determines whether we should experimentally create pool/ links to each package entry. This may be
+# time consuming.
+showpoollinks = True
 
 ### END CONFIGURATION VARIABLES ###
 
@@ -26,6 +37,10 @@ mirrorlist = subprocess.check_output(("aptly", "mirror", "list", "-raw")).decode
 repolist += mirrorlist
 repolist += extradists
 snapshotlist = subprocess.check_output(("aptly", "snapshot", "list", "-raw")).decode('utf-8').splitlines()
+
+if showpoollinks:  # Pre-enumerate a list of all objects in pool/
+    import pathlib
+    poolobjects = list(pathlib.Path(outdir).glob('pool/*/*/*/*.*'))
 
 def plist(dist):
     packagelist = []
@@ -45,14 +60,15 @@ def plist(dist):
     for line in packages_raw:
         # We can't get a raw list of packages, but all package entries are indented... Use that.
         if line.startswith(b" "):
-            # s is a string in the format packagename_version_arch
-            name, version, arch = line.decode("utf-8").strip().split("_")
+            # Each package is given as a string in the format packagename_version_arch
+            fullname = line.decode("utf-8").strip()
+            name, version, arch = fullname.split("_")
 
             # Track a list of unique source packages
             if arch == "source":
                  unique.add(name)
 
-            packagelist.append((name, version, arch))
+            packagelist.append((name, version, arch, fullname))
     # Sort everything by package name
     packagelist.sort(key=lambda k: k[0])
 
@@ -75,8 +91,40 @@ def plist(dist):
 <th>Architectures</th>
 </tr>""".format(dist))
         for p in packagelist:
-            f.write(("""<tr><td>{}</td><td>{}</td><td>{}</td></tr>"""
-                .format(*p)))
+            # If enabled, try to find a link to the file for the package given.
+            if showpoollinks:
+                name, version, arch, fullname = p
+
+                poolresults = subprocess.check_output(("aptly", "package", "show", "-with-files", fullname))
+
+                # First, locate the raw filename corresponding to the package we asked for.
+                filename = ''
+                for line in poolresults.splitlines():
+                    line = line.decode('utf-8')
+                    if line.startswith('Filename:'):
+                        # .deb's get a fancy "Filename: hello_1.0.0-1_all.deb" line in aptly's output.
+                        filename = line.split(' ')[1]
+                        break
+                    elif arch == 'source' and '.dsc' in line:
+                        # Source packages are listed as raw files in the pool though. Look for .dsc
+                        # files in this case, usually in the line format
+                        # 72c1479a7564c47cc2643336332c1e1d 711 utopia-defaults_2016.05.21+1.dsc
+                        filename = line.split(' ')[-1]
+                        break
+
+                if filename:
+                    # Then, once we've found the filename, look it up in the pool/ tree we made
+                    # earlier.
+                    #print("Found filename %s for %s" % (filename, fullname))
+                    for poolfile in poolobjects:
+                        if poolfile.name == filename:
+                            # Filename matched found, make the "arch" field a relative link to the path given.
+                            location = poolfile.relative_to(outdir)
+                            arch = '<a href="%s">%s</a>' % (location, arch)
+                            #print("Found %s for %s" % (poolfile, fullname))
+                            break
+
+                f.write(("""<tr><td>{}</td><td>{}</td><td>{}</td></tr>""".format(name, version, arch)))
         f.write("""</table>
 <p><b>Total items:</b> {} ({} unique source packages)</p>
 <p>Last updated {}</p>
