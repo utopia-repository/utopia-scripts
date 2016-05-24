@@ -1,5 +1,5 @@
 #!/bin/bash
-OUTDIR="/srv/http/packages-warden.overdrive.pw"
+OUTDIR="packages.overdrivenetworks.com.mirror"
 
 rsync --verbose -a --progress --bwlimit=10100 pub@45.79.66.40::packages "$OUTDIR" --delete-after --exclude .lastsync --password-file ~/.rsync.pwd
 
