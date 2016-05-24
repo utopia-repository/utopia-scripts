@@ -33,8 +33,6 @@ if not shutil.which('aptly'):
 
 print('Output directory set to: %s' % outdir)
 repolist = subprocess.check_output(("aptly", "repo", "list", "-raw")).decode('utf-8').splitlines()
-mirrorlist = subprocess.check_output(("aptly", "mirror", "list", "-raw")).decode('utf-8').splitlines()
-repolist += mirrorlist
 repolist += extradists
 snapshotlist = subprocess.check_output(("aptly", "snapshot", "list", "-raw")).decode('utf-8').splitlines()
 
