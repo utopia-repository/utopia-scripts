@@ -7,7 +7,6 @@ import os
 import re
 
 ### BEGIN CONFIGURATION VARIABLES ###
-archs = ("amd64", "i386")
 outdir = "/srv/aptly/public"
 extradists = ["sid-imports"]
 
@@ -47,20 +46,15 @@ def plist(dist):
         # We can't get a raw list of packages, but all package entries are indented... Use that.
         if line.startswith(b" "):
             # s is a string in the format packagename_version_arch
-            s = line.decode("utf-8").strip().split("_")
-            # Expand architecture "all" packages to every arch specified
-            # in archs
-            if s[2] == "source":
-                 unique.add(s[0])
-            if s[2] == "all":
-                for a in archs:
-                    packagelist.append({'pkg': s[0], 'ver': s[1], 
-                                'arch': a})
-            else:
-                packagelist.append({'pkg': s[0], 'ver': s[1], 
-                                'arch': s[2]})
+            name, version, arch = line.decode("utf-8").strip().split("_")
+
+            # Track a list of unique source packages
+            if arch == "source":
+                 unique.add(name)
+
+            packagelist.append((name, version, arch))
     # Sort everything by package name
-    packagelist.sort(key=lambda k: k['pkg'])
+    packagelist.sort(key=lambda k: k[0])
 
     os.chdir(outdir)
     with open('%s_list.html' % dist, 'w') as f:
@@ -82,7 +76,7 @@ def plist(dist):
 </tr>""".format(dist))
         for p in packagelist:
             f.write(("""<tr><td>{}</td><td>{}</td><td>{}</td></tr>"""
-                .format(p['pkg'], p['ver'], p['arch'])))
+                .format(*p)))
         f.write("""</table>
 <p><b>Total items:</b> {} ({} unique source packages)</p>
 <p>Last updated {}</p>
