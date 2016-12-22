@@ -33,6 +33,9 @@ showpoollinks = True
 # This option implies that 'showpoollinks' is enabled.
 showchangeloglinks = True
 
+# Determines whether Vcs-Browser links should be shown.
+showvcslinks = True
+
 # Defines any extra styles / lines to put in <head>.
 extrastyles = """<link rel="stylesheet" type="text/css" href="gstyle.css">
 <!-- From http://www.kryogenix.org/code/browser/sorttable/ -->
@@ -96,19 +99,22 @@ def plist(dist):
 <body>
 <a href="/">Back to root</a>
 <br><br>
-<table>
+<table class="sortable">
 <tr>
 <th>Package Name</th>
 <th>Version</th>
 <th>Architectures</th>""".format(dist, extrastyles))
         if showchangeloglinks:
             f.write("""<th>Changelog</th>""")
+        if showvcslinks:
+            f.write("""<th>Vcs-Browser</th>""")
         f.write("""
 </tr>
 """)
         for p in packagelist:
             # If enabled, try to find a link to the file for the package given.
             if showpoollinks or showchangeloglinks:
+                #print("Finding links for %s" % str(p))
                 name, version, arch, fullname = p
 
                 poolresults = subprocess.check_output(("aptly", "package", "show", "-with-files", fullname))
@@ -116,18 +122,22 @@ def plist(dist):
                 # First, locate the raw filename corresponding to the package we asked for.
                 filename = ''
                 changelog_path = ''
+                vcs_link = ''
+
                 for line in poolresults.splitlines():
                     line = line.decode('utf-8')
+
+                    if line.startswith('Vcs-Browser:'):
+                        vcs_link = line.split(' ')[1]
+
                     if line.startswith('Filename:'):
                         # .deb's get a fancy "Filename: hello_1.0.0-1_all.deb" line in aptly's output.
                         filename = line.split(' ')[1]
-                        break
                     elif arch == 'source' and '.dsc' in line:
                         # Source packages are listed as raw files in the pool though. Look for .dsc
                         # files in this case, usually in the line format
                         # 72c1479a7564c47cc2643336332c1e1d 711 utopia-defaults_2016.05.21+1.dsc
                         filename = line.split(' ')[-1]
-                        break
 
                 if filename:
                     # Then, once we've found the filename, look it up in the pool/ tree we made
@@ -151,7 +161,12 @@ def plist(dist):
                 if showchangeloglinks:
                     # Only fill in the changelog column if it is enabled, and the changelog exists.
                     if changelog_path and os.path.exists(changelog_path):
-                        f.write("""<td><a href="{}">{}</a></td>""".format(changelog_path, os.path.basename(changelog_path)))
+                        f.write("""<td><a href="{}">Changelog</a></td>""".format(changelog_path))
+                    else:
+                        f.write("""<td>N/A</td>""")
+                if showvcslinks:
+                    if vcs_link:
+                        f.write("""<td><a href="{0}">{0}</a>""".format(vcs_link))
                     else:
                         f.write("""<td>N/A</td>""")
                 f.write("""
