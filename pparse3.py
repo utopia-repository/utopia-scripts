@@ -34,7 +34,10 @@ showpoollinks = True
 showchangeloglinks = True
 
 # Defines any extra styles / lines to put in <head>.
-extrastyles = """<link rel="stylesheet" type="text/css" href="gstyle.css">"""
+extrastyles = """<link rel="stylesheet" type="text/css" href="gstyle.css">
+<!-- From http://www.kryogenix.org/code/browser/sorttable/ -->
+<script src="sorttable.js"></script>
+"""
 
 ### END CONFIGURATION VARIABLES ###
 
