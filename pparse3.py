@@ -126,18 +126,19 @@ def plist(dist):
 
                 for line in poolresults.splitlines():
                     line = line.decode('utf-8')
+                    fields = line.split()
 
                     if line.startswith('Vcs-Browser:'):
-                        vcs_link = line.split(' ')[1]
+                        vcs_link = fields[1]
 
                     if line.startswith('Filename:'):
                         # .deb's get a fancy "Filename: hello_1.0.0-1_all.deb" line in aptly's output.
-                        filename = line.split(' ')[1]
-                    elif arch == 'source' and '.dsc' in line:
+                        filename = fields[1]
+                    if arch == 'source' and '.dsc' in line and len(fields) == 3:
                         # Source packages are listed as raw files in the pool though. Look for .dsc
                         # files in this case, usually in the line format
                         # 72c1479a7564c47cc2643336332c1e1d 711 utopia-defaults_2016.05.21+1.dsc
-                        filename = line.split(' ')[-1]
+                        filename = fields[-1]
 
                 if filename:
                     # Then, once we've found the filename, look it up in the pool/ tree we made
