@@ -33,6 +33,9 @@ showpoollinks = True
 # This option implies that 'showpoollinks' is enabled.
 showchangeloglinks = True
 
+# Defines any extra styles / lines to put in <head>.
+extrastyles = """<link rel="stylesheet" type="text/css" href="gstyle.css">"""
+
 ### END CONFIGURATION VARIABLES ###
 
 if not shutil.which('aptly'):
@@ -85,7 +88,7 @@ def plist(dist):
 <head><title>Package List for the Utopia Repository - {}</title>
 <meta charset="UTF-8">
 <meta name=viewport content="width=device-width">
-<link rel="stylesheet" type="text/css" href="gstyle.css">
+{}
 </head>
 <body>
 <a href="/">Back to root</a>
@@ -94,7 +97,7 @@ def plist(dist):
 <tr>
 <th>Package Name</th>
 <th>Version</th>
-<th>Architectures</th>""".format(dist))
+<th>Architectures</th>""".format(dist, extrastyles))
         if showchangeloglinks:
             f.write("""<th>Changelog</th>""")
         f.write("""
