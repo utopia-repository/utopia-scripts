@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # HTML package listing script for aptly servers, as seen on https://packages.overdrivenetworks.com
-# TODO: document exactly what this script does and how it does it.
+# This looks up snapshots related to repositories and mirror, and creates tables showing each
+# package's name, version, and architecture (with links to .deb downloads).
 import time
 import subprocess
 import sys
@@ -14,7 +15,8 @@ import re
 # contains the public dists/ and pool/ folders.
 outdir = "/srv/aptly/public"
 
-# A list of extra distributions to process.
+# A list of repositories is automatically retrieved, but you can define extra distributions to
+# process here.
 extradists = ["sid-imports"]
 
 # REGEX to look for snapshots for the distribution we're looking up. Defaults to ${dist}-YYYY-MM-DD.
@@ -22,8 +24,14 @@ extradists = ["sid-imports"]
 snapshotregex_base = r'^%s-\d{4}-\d{2}-\d{2}'  # First %s is the distribution name
 
 # Determines whether we should experimentally create pool/ links to each package entry. This may be
-# time consuming.
+# time consuming for larger repositories, because the script will index the entirety of pool/.
 showpoollinks = True
+
+# Determines whether links to changelogs should be shown, using the format of synaptic
+# (i.e. PACKAGENAME_VERSION_ARCH.changelog). Such changelogs can be generated using the
+# genchanges script in the packagelists/ folder.
+# This option implies that 'showpoollinks' is enabled.
+showchangeloglinks = True
 
 ### END CONFIGURATION VARIABLES ###
 
@@ -36,7 +44,7 @@ repolist = subprocess.check_output(("aptly", "repo", "list", "-raw")).decode('ut
 repolist += extradists
 snapshotlist = subprocess.check_output(("aptly", "snapshot", "list", "-raw")).decode('utf-8').splitlines()
 
-if showpoollinks:  # Pre-enumerate a list of all objects in pool/
+if showpoollinks or showchangeloglinks:  # Pre-enumerate a list of all objects in pool/
     import pathlib
     poolobjects = list(pathlib.Path(outdir).glob('pool/*/*/*/*.*'))
 
@@ -86,17 +94,22 @@ def plist(dist):
 <tr>
 <th>Package Name</th>
 <th>Version</th>
-<th>Architectures</th>
-</tr>""".format(dist))
+<th>Architectures</th>""".format(dist))
+        if showchangeloglinks:
+            f.write("""<th>Changelog</th>""")
+        f.write("""
+</tr>
+""")
         for p in packagelist:
             # If enabled, try to find a link to the file for the package given.
-            if showpoollinks:
+            if showpoollinks or showchangeloglinks:
                 name, version, arch, fullname = p
 
                 poolresults = subprocess.check_output(("aptly", "package", "show", "-with-files", fullname))
 
                 # First, locate the raw filename corresponding to the package we asked for.
                 filename = ''
+                changelog_path = ''
                 for line in poolresults.splitlines():
                     line = line.decode('utf-8')
                     if line.startswith('Filename:'):
@@ -118,11 +131,26 @@ def plist(dist):
                         if poolfile.name == filename:
                             # Filename matched found, make the "arch" field a relative link to the path given.
                             location = poolfile.relative_to(outdir)
+                            if showchangeloglinks and arch != 'source':
+                                changelog_path = os.path.splitext(str(location))[0] + '.changelog'
                             arch = '<a href="%s">%s</a>' % (location, arch)
                             #print("Found %s for %s" % (poolfile, fullname))
                             break
 
-                f.write(("""<tr><td>{}</td><td>{}</td><td>{}</td></tr>""".format(name, version, arch)))
+                f.write(("""<tr>
+<td>{}</td>
+<td>{}</td>
+<td>{}</td>
+""".format(name, version, arch)))
+                if showchangeloglinks:
+                    # Only fill in the changelog column if it is enabled, and the changelog exists.
+                    if changelog_path and os.path.exists(changelog_path):
+                        f.write("""<td><a href="{}">{}</a></td>""".format(changelog_path, os.path.basename(changelog_path)))
+                    else:
+                        f.write("""<td>N/A</td>""")
+                f.write("""
+</tr>
+""")
         f.write("""</table>
 <p><b>Total items:</b> {} ({} unique source packages)</p>
 <p>Last updated {}</p>
