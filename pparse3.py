@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # HTML package listing script for aptly servers, as seen on https://packages.overdrivenetworks.com
 # This looks up snapshots related to repositories and mirror, and creates tables showing each
-# package's name, version, and architecture (with links to .deb downloads).
+# package's name, version, and architecture. It also supports optionally displaying links to
+# .deb/.dsc downloads, Vcs-Browser links, and generating changelogs.
 import time
 import subprocess
 import sys
@@ -27,11 +28,10 @@ snapshotregex_base = r'^%s-\d{4}-\d{2}-\d{2}'  # First %s is the distribution na
 # time consuming for larger repositories, because the script will index the entirety of pool/.
 showpoollinks = True
 
-# Determines whether links to changelogs should be shown, using the format of synaptic
-# (i.e. PACKAGENAME_VERSION_ARCH.changelog). Such changelogs can be generated using the
-# genchanges script in the packagelists/ folder.
-# This option implies that 'showpoollinks' is enabled.
-showchangeloglinks = True
+# Determines whether changelogs should be shown generated, using the format of synaptic
+# (i.e. PACKAGENAME_VERSION_ARCH.changelog).
+# This option requires the python3-debian module, and implies that 'showpoollinks' is enabled.
+showchangelogs = True
 
 # Determines whether Vcs-Browser links should be shown.
 showvcslinks = True
@@ -44,6 +44,9 @@ extrastyles = """<link rel="stylesheet" type="text/css" href="gstyle.css">
 
 ### END CONFIGURATION VARIABLES ###
 
+if showchangelogs:
+    from debian import changelog, debfile
+
 if not shutil.which('aptly'):
     print('Error: aptly not found in path!')
     sys.exit(1)
@@ -53,7 +56,7 @@ repolist = subprocess.check_output(("aptly", "repo", "list", "-raw")).decode('ut
 repolist += extradists
 snapshotlist = subprocess.check_output(("aptly", "snapshot", "list", "-raw")).decode('utf-8').splitlines()
 
-if showpoollinks or showchangeloglinks:  # Pre-enumerate a list of all objects in pool/
+if showpoollinks or showchangelogs:  # Pre-enumerate a list of all objects in pool/
     import pathlib
     poolobjects = list(pathlib.Path(outdir).glob('pool/*/*/*/*.*'))
 
@@ -72,7 +75,8 @@ def plist(dist):
             packages_raw = subprocess.check_output(("aptly", "snapshot", "show", "-with-packages", snapshotname)).splitlines()
     except subprocess.CalledProcessError:  # It broke, whatever...
         return
-    for line in packages_raw:
+
+    for line in packages_raw[packages_raw.index(b"Packages:"):]:
         # We can't get a raw list of packages, but all package entries are indented... Use that.
         if line.startswith(b" "):
             # Each package is given as a string in the format packagename_version_arch
@@ -104,7 +108,7 @@ def plist(dist):
 <th>Package Name</th>
 <th>Version</th>
 <th>Architectures</th>""".format(dist, extrastyles))
-        if showchangeloglinks:
+        if showchangelogs:
             f.write("""<th>Changelog</th>""")
         if showvcslinks:
             f.write("""<th>Vcs-Browser</th>""")
@@ -113,7 +117,7 @@ def plist(dist):
 """)
         for p in packagelist:
             # If enabled, try to find a link to the file for the package given.
-            if showpoollinks or showchangeloglinks:
+            if showpoollinks or showchangelogs:
                 #print("Finding links for %s" % str(p))
                 name, version, arch, fullname = p
 
@@ -148,8 +152,20 @@ def plist(dist):
                         if poolfile.name == filename:
                             # Filename matched found, make the "arch" field a relative link to the path given.
                             location = poolfile.relative_to(outdir)
-                            if showchangeloglinks and arch != 'source':
+                            if showchangelogs and arch != 'source':  # XXX: there's no easy way to generate changelogs from sources
                                 changelog_path = os.path.splitext(str(location))[0] + '.changelog'
+
+                                if not os.path.exists(changelog_path):
+                                    # There's a new changelog file for every version, so don't repeat extra work.
+
+                                    print("    Reading .deb %s" % poolfile.name)
+                                    deb = debfile.DebFile(str(poolfile.resolve()))
+                                    changelog = deb.changelog()
+                                    if changelog:
+                                        with open(changelog_path, 'w') as changes_f:
+                                            print("    Writing changelog for %s (%s) to %s" % (fullname, filename, changelog_path))
+                                            changelog.write_to_open_file(changes_f)
+
                             arch = '<a href="%s">%s</a>' % (location, arch)
                             #print("Found %s for %s" % (poolfile, fullname))
                             break
@@ -159,7 +175,7 @@ def plist(dist):
 <td>{}</td>
 <td>{}</td>
 """.format(name, version, arch)))
-                if showchangeloglinks:
+                if showchangelogs:
                     # Only fill in the changelog column if it is enabled, and the changelog exists.
                     if changelog_path and os.path.exists(changelog_path):
                         f.write("""<td><a href="{}">Changelog</a></td>""".format(changelog_path))
