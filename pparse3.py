@@ -31,7 +31,13 @@ showpoollinks = True
 # Determines whether changelogs should be shown generated, using the format of synaptic
 # (i.e. PACKAGENAME_VERSION_ARCH.changelog).
 # This option requires the python3-debian module, and implies that 'showpoollinks' is enabled.
+# This may be time consuming for repositories with large .deb's, as each .deb is temporarily
+# extracted to retrieve its changelog.
 showchangelogs = True
+
+# Determines the maximum file size (in bytes) for .deb's that this script should read to
+# generate changelogs. Any files larger than this size will be skipped.
+maxfilesize = 31457280  # 30 MB
 
 # Determines whether Vcs-Browser links should be shown.
 showvcslinks = True
@@ -158,8 +164,13 @@ def plist(dist):
                                 if not os.path.exists(changelog_path):
                                     # There's a new changelog file for every version, so don't repeat extra work.
 
+                                    full_path = str(poolfile.resolve())
+                                    if os.path.getsize(full_path) > maxfilesize:
+                                        print("    Skipping .deb %s; file size too large" % poolfile.name)
+                                        break
+
                                     print("    Reading .deb %s" % poolfile.name)
-                                    deb = debfile.DebFile(str(poolfile.resolve()))
+                                    deb = debfile.DebFile(full_path)
                                     changelog = deb.changelog()
                                     if changelog:
                                         with open(changelog_path, 'w') as changes_f:
