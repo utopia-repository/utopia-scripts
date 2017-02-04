@@ -168,6 +168,9 @@ def plist(dist):
                                     if os.path.getsize(full_path) > maxfilesize:
                                         print("    Skipping .deb %s; file size too large" % poolfile.name)
                                         break
+                                    elif name.endswith(('-dbg', '-dbgsym')):
+                                        print("    Skipping .deb %s; debug packages don't use changelogs" % poolfile.name)
+                                        break
 
                                     print("    Reading .deb %s" % poolfile.name)
                                     deb = debfile.DebFile(full_path)
