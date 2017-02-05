@@ -126,6 +126,7 @@ def plist(dist):
             if showpoollinks or showchangelogs:
                 #print("Finding links for %s" % str(p))
                 name, version, arch, fullname = p
+                download_link = arch
 
                 poolresults = subprocess.check_output(("aptly", "package", "show", "-with-files", fullname))
 
@@ -158,6 +159,7 @@ def plist(dist):
                         if poolfile.name == filename:
                             # Filename matched found, make the "arch" field a relative link to the path given.
                             location = poolfile.relative_to(outdir)
+                            download_link = '<a href="%s">%s</a>' % (location, arch)
                             if showchangelogs and arch != 'source':  # XXX: there's no easy way to generate changelogs from sources
                                 changelog_path = os.path.splitext(str(location))[0] + '.changelog'
 
@@ -180,7 +182,6 @@ def plist(dist):
                                             print("    Writing changelog for %s (%s) to %s" % (fullname, filename, changelog_path))
                                             changelog.write_to_open_file(changes_f)
 
-                            arch = '<a href="%s">%s</a>' % (location, arch)
                             #print("Found %s for %s" % (poolfile, fullname))
                             break
 
@@ -188,7 +189,7 @@ def plist(dist):
 <td>{}</td>
 <td>{}</td>
 <td>{}</td>
-""".format(name, version, arch)))
+""".format(name, version, download_link)))
                 if showchangelogs:
                     # Only fill in the changelog column if it is enabled, and the changelog exists.
                     if changelog_path and os.path.exists(changelog_path):
