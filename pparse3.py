@@ -180,7 +180,11 @@ def plist(dist):
                                     if changelog:
                                         with open(changelog_path, 'w') as changes_f:
                                             print("    Writing changelog for %s (%s) to %s" % (fullname, filename, changelog_path))
-                                            changelog.write_to_open_file(changes_f)
+                                            try:
+                                                changelog.write_to_open_file(changes_f)
+                                            except ValueError:  # Something went wrong, bleh.
+                                                traceback.print_exc()
+                                                continue
 
                             #print("Found %s for %s" % (poolfile, fullname))
                             break
