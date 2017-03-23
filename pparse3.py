@@ -9,6 +9,7 @@ import sys
 import shutil
 import os
 import re
+import traceback
 
 ### BEGIN CONFIGURATION VARIABLES ###
 
