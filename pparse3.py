@@ -36,6 +36,10 @@ showpoollinks = True
 # extracted to retrieve its changelog.
 showchangelogs = True
 
+# Defines a changelog cache directory: generated changelogs will be stored here and reused, instead
+# of regenerating changelogs for versions already known.
+changelogcache = "/srv/aptly/changelogcache"
+
 # Determines the maximum file size (in bytes) for .deb's that this script should read to
 # generate changelogs. Any files larger than this size will be skipped.
 maxfilesize = 20971520  # 20 MB
@@ -65,7 +69,12 @@ snapshotlist = subprocess.check_output(("aptly", "snapshot", "list", "-raw")).de
 
 if showpoollinks or showchangelogs:  # Pre-enumerate a list of all objects in pool/
     import pathlib
+    # XXX: ugly globs......
     poolobjects = list(pathlib.Path(outdir).glob('pool/*/*/*/*.*'))
+
+    if changelogcache and not os.path.exists(changelogcache):
+        print("Creating cache dir %s" % changelogcache)
+        os.mkdir(changelogcache)
 
 def plist(dist):
     packagelist = []
@@ -163,9 +172,15 @@ def plist(dist):
                             download_link = '<a href="%s">%s</a>' % (location, arch)
                             if showchangelogs and arch != 'source':  # XXX: there's no easy way to generate changelogs from sources
                                 changelog_path = os.path.splitext(str(location))[0] + '.changelog'
+                                if changelogcache:
+                                    cache_path = os.path.join(changelogcache, os.path.basename(changelog_path))
+                                    #print("    Caching changelog to %s" % cache_path)
+                                else:
+                                    cache_path = changelog_path
 
                                 if not os.path.exists(changelog_path):
-                                    # There's a new changelog file for every version, so don't repeat extra work.
+                                    # There's a new changelog file name for every version, so don't repeat generation
+                                    # for versions that already have a changelog.
 
                                     full_path = str(poolfile.resolve())
                                     if os.path.getsize(full_path) > maxfilesize:
@@ -175,17 +190,27 @@ def plist(dist):
                                         print("    Skipping .deb %s; debug packages don't use changelogs" % poolfile.name)
                                         break
 
-                                    print("    Reading .deb %s" % poolfile.name)
-                                    deb = debfile.DebFile(full_path)
-                                    changelog = deb.changelog()
-                                    if changelog:
-                                        with open(changelog_path, 'w') as changes_f:
-                                            print("    Writing changelog for %s (%s) to %s" % (fullname, filename, changelog_path))
-                                            try:
-                                                changelog.write_to_open_file(changes_f)
-                                            except ValueError:  # Something went wrong, bleh.
-                                                traceback.print_exc()
-                                                continue
+                                    if not os.path.exists(cache_path):
+                                        # Cache doesn't exist, so make a new file.
+                                        print("    Reading .deb %s" % poolfile.name)
+                                        deb = debfile.DebFile(full_path)
+                                        changelog = deb.changelog()
+                                        if changelog:
+                                            with open(cache_path, 'w') as changes_f:
+                                                print("    Writing changelog for %s (%s) to %s" % (fullname, filename, changelog_path))
+                                                try:
+                                                    changelog.write_to_open_file(changes_f)
+                                                except ValueError:  # Something went wrong, bleh.
+                                                    traceback.print_exc()
+                                                    continue
+
+                                    if changelog_path != cache_path:
+                                        print("    Linking cached changelog %s to %s" % (cache_path, changelog_path))
+                                        try:
+                                            os.link(cache_path, changelog_path)
+                                        except OSError:
+                                            traceback.print_exc()
+                                            continue
 
                             #print("Found %s for %s" % (poolfile, fullname))
                             break
