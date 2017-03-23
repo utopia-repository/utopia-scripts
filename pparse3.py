@@ -15,71 +15,71 @@ import traceback
 
 # Sets the folder where the generated package lists should go. This should be the same folder that
 # contains the public dists/ and pool/ folders.
-outdir = "/srv/aptly/public"
+OUTDIR = "/srv/aptly/public"
 
 # A list of repositories is automatically retrieved, but you can define extra distributions to
 # process here.
-extradists = ["sid-imports"]
+EXTRA_DISTS = ["sid-imports"]
 
 # REGEX to look for snapshots for the distribution we're looking up. Defaults to ${dist}-YYYY-MM-DD.
 # If this regex doesn't match a certain distribution, it is treated as its own repository in lookup.
-snapshotregex_base = r'^%s-\d{4}-\d{2}-\d{2}'  # First %s is the distribution name
+SNAPSHOT_REGEX_BASE = r'^%s-\d{4}-\d{2}-\d{2}'  # First %s is the distribution name
 
 # Determines whether we should experimentally create pool/ links to each package entry. This may be
 # time consuming for larger repositories, because the script will index the entirety of pool/.
-showpoollinks = True
+SHOW_POOL_LINKS = True
 
 # Determines whether changelogs should be shown generated, using the format of synaptic
 # (i.e. PACKAGENAME_VERSION_ARCH.changelog).
-# This option requires the python3-debian module, and implies that 'showpoollinks' is enabled.
+# This option requires the python3-debian module, and implies that 'SHOW_POOL_LINKS' is enabled.
 # This may be time consuming for repositories with large .deb's, as each .deb is temporarily
 # extracted to retrieve its changelog.
-showchangelogs = True
+SHOW_CHANGELOGS = True
 
 # Defines a changelog cache directory: generated changelogs will be stored here and reused, instead
 # of regenerating changelogs for versions already known.
-changelogcache = "/srv/aptly/changelogcache"
+CHANGELOG_CACHE_DIR = "/srv/aptly/changelogcache"
 
 # Determines the maximum file size (in bytes) for .deb's that this script should read to
 # generate changelogs. Any files larger than this size will be skipped.
-maxfilesize = 20971520  # 20 MB
+MAX_CHANGELOG_FILE_SIZE = 20971520  # 20 MB
 
 # Determines whether Vcs-Browser links should be shown.
-showvcslinks = True
+SHOW_VCS_LINKS = True
 
 # Defines any extra styles / lines to put in <head>.
-extrastyles = """<link rel="stylesheet" type="text/css" href="gstyle.css">
+EXTRA_STYLES = """<link rel="stylesheet" type="text/css" href="gstyle.css">
 <!-- From http://www.kryogenix.org/code/browser/sorttable/ -->
 <script src="sorttable.js"></script>
 """
 
 ### END CONFIGURATION VARIABLES ###
 
-if showchangelogs:
+if SHOW_CHANGELOGS:
     from debian import changelog, debfile
 
 if not shutil.which('aptly'):
     print('Error: aptly not found in path!')
     sys.exit(1)
 
-print('Output directory set to: %s' % outdir)
+print('Output directory set to: %s' % OUTDIR)
 repolist = subprocess.check_output(("aptly", "repo", "list", "-raw")).decode('utf-8').splitlines()
-repolist += extradists
+repolist += EXTRA_DISTS
 snapshotlist = subprocess.check_output(("aptly", "snapshot", "list", "-raw")).decode('utf-8').splitlines()
 
-if showpoollinks or showchangelogs:  # Pre-enumerate a list of all objects in pool/
+if SHOW_POOL_LINKS or SHOW_CHANGELOGS:  # Pre-enumerate a list of all objects in pool/
     import pathlib
     # XXX: ugly globs......
-    poolobjects = list(pathlib.Path(outdir).glob('pool/*/*/*/*.*'))
+    poolobjects = list(pathlib.Path(OUTDIR).glob('pool/*/*/*/*.*'))
 
-    if changelogcache and not os.path.exists(changelogcache):
-        print("Creating cache dir %s" % changelogcache)
-        os.mkdir(changelogcache)
+    if CHANGELOG_CACHE_DIR and not os.path.exists(CHANGELOG_CACHE_DIR):
+        print("Creating cache dir %s" % CHANGELOG_CACHE_DIR)
+        os.mkdir(CHANGELOG_CACHE_DIR)
 
 def plist(dist):
     packagelist = []
     unique = set()
-    snapshotregex = re.compile(snapshotregex_base % dist)
+    snapshotregex = re.compile(SNAPSHOT_REGEX_BASE % dist)
     try:
         try:  # Try to find a snapshot matching the distribution
             snapshotname = [s for s in snapshotlist if snapshotregex.search(s)][-1]
@@ -107,7 +107,7 @@ def plist(dist):
     # Sort everything by package name
     packagelist.sort(key=lambda k: k[0])
 
-    os.chdir(outdir)
+    os.chdir(OUTDIR)
     with open('%s_list.html' % dist, 'w') as f:
         f.write("""<!DOCTYPE HTML>
 <html>
@@ -123,17 +123,17 @@ def plist(dist):
 <tr>
 <th>Package Name</th>
 <th>Version</th>
-<th>Architectures</th>""".format(dist, extrastyles))
-        if showchangelogs:
+<th>Architectures</th>""".format(dist, EXTRA_STYLES))
+        if SHOW_CHANGELOGS:
             f.write("""<th>Changelog</th>""")
-        if showvcslinks:
+        if SHOW_VCS_LINKS:
             f.write("""<th>Vcs-Browser</th>""")
         f.write("""
 </tr>
 """)
         for p in packagelist:
             # If enabled, try to find a link to the file for the package given.
-            if showpoollinks or showchangelogs:
+            if SHOW_POOL_LINKS or SHOW_CHANGELOGS:
                 #print("Finding links for %s" % str(p))
                 name, version, arch, fullname = p
                 download_link = arch
@@ -168,12 +168,12 @@ def plist(dist):
                     for poolfile in poolobjects:
                         if poolfile.name == filename:
                             # Filename matched found, make the "arch" field a relative link to the path given.
-                            location = poolfile.relative_to(outdir)
+                            location = poolfile.relative_to(OUTDIR)
                             download_link = '<a href="%s">%s</a>' % (location, arch)
-                            if showchangelogs and arch != 'source':  # XXX: there's no easy way to generate changelogs from sources
+                            if SHOW_CHANGELOGS and arch != 'source':  # XXX: there's no easy way to generate changelogs from sources
                                 changelog_path = os.path.splitext(str(location))[0] + '.changelog'
-                                if changelogcache:
-                                    cache_path = os.path.join(changelogcache, os.path.basename(changelog_path))
+                                if CHANGELOG_CACHE_DIR:
+                                    cache_path = os.path.join(CHANGELOG_CACHE_DIR, os.path.basename(changelog_path))
                                     #print("    Caching changelog to %s" % cache_path)
                                 else:
                                     cache_path = changelog_path
@@ -183,7 +183,7 @@ def plist(dist):
                                     # for versions that already have a changelog.
 
                                     full_path = str(poolfile.resolve())
-                                    if os.path.getsize(full_path) > maxfilesize:
+                                    if os.path.getsize(full_path) > MAX_CHANGELOG_FILE_SIZE:
                                         print("    Skipping .deb %s; file size too large" % poolfile.name)
                                         break
                                     elif name.endswith(('-dbg', '-dbgsym')):
@@ -220,13 +220,13 @@ def plist(dist):
 <td>{}</td>
 <td>{}</td>
 """.format(name, version, download_link)))
-                if showchangelogs:
+                if SHOW_CHANGELOGS:
                     # Only fill in the changelog column if it is enabled, and the changelog exists.
                     if changelog_path and os.path.exists(changelog_path):
                         f.write("""<td><a href="{}">Changelog</a></td>""".format(changelog_path))
                     else:
                         f.write("""<td>N/A</td>""")
-                if showvcslinks:
+                if SHOW_VCS_LINKS:
                     if vcs_link:
                         f.write("""<td><a href="{0}">{0}</a>""".format(vcs_link))
                     else:
