@@ -37,7 +37,7 @@ showchangelogs = True
 
 # Determines the maximum file size (in bytes) for .deb's that this script should read to
 # generate changelogs. Any files larger than this size will be skipped.
-maxfilesize = 31457280  # 30 MB
+maxfilesize = 20971520  # 20 MB
 
 # Determines whether Vcs-Browser links should be shown.
 showvcslinks = True
