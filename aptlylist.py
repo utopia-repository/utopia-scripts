@@ -11,6 +11,7 @@ import shutil
 import os
 import re
 import traceback
+import collections
 
 ### BEGIN CONFIGURATION VARIABLES ###
 
@@ -48,6 +49,13 @@ MAX_CHANGELOG_FILE_SIZE = 20971520  # 20 MB
 # Determines whether Vcs-Browser links should be shown.
 SHOW_VCS_LINKS = True
 
+# Determines whether dependencies/recommends/suggests for packages should be shown.
+SHOW_DEPENDENCIES = True
+
+# Determines whether extended package relations (Breaks/Conflicts/Replaces) will be shown.
+# This can be added for completeness but usually isn't of great value to end users.
+SHOW_EXTENDED_RELATIONS = False
+
 # Defines any extra styles / lines to put in <head>.
 EXTRA_STYLES = """<link rel="stylesheet" type="text/css" href="gstyle.css">
 <!-- From http://www.kryogenix.org/code/browser/sorttable/ -->
@@ -76,6 +84,15 @@ if SHOW_POOL_LINKS or SHOW_CHANGELOGS:  # Pre-enumerate a list of all objects in
     if CHANGELOG_CACHE_DIR and not os.path.exists(CHANGELOG_CACHE_DIR):
         print("Creating cache dir %s" % CHANGELOG_CACHE_DIR)
         os.mkdir(CHANGELOG_CACHE_DIR)
+
+DEPENDENCY_TYPES = {"Build-Depends": 'build-dep', "Build-Depends-Indep": 'build-idep',
+                    "Depends": 'dep', "Recommends": 'rec', "Suggests": 'sug'}
+
+# I don't think any official package tracker shows these, but I'm including them for
+# completeness. That said, I don't know of any established abbreviations so I'm
+# keeping them as-is.
+if SHOW_EXTENDED_RELATIONS:
+    DEPENDENCY_TYPES.update({"Conflicts": "Conflicts", "Breaks": "Breaks", "Replaces": "Replaces"})
 
 def plist(dist):
     packagelist = []
@@ -125,16 +142,20 @@ def plist(dist):
 <th>Package Name</th>
 <th>Version</th>
 <th>Architectures</th>""".format(dist, EXTRA_STYLES))
+        # Note: preserve this order when formatting the <td>'s later on, or the results
+        # will be in the wrong column!
         if SHOW_CHANGELOGS:
             f.write("""<th>Changelog</th>""")
         if SHOW_VCS_LINKS:
             f.write("""<th>Vcs-Browser</th>""")
+        if SHOW_DEPENDENCIES:
+            f.write("""<th>Package Relations</th>""")
         f.write("""
 </tr>
 """)
         for p in packagelist:
             # If enabled, try to find a link to the file for the package given.
-            if SHOW_POOL_LINKS or SHOW_CHANGELOGS:
+            if SHOW_POOL_LINKS or SHOW_CHANGELOGS or SHOW_DEPENDENCIES:
                 #print("Finding links for %s" % str(p))
                 name, version, arch, fullname = p
                 download_link = arch
@@ -145,6 +166,7 @@ def plist(dist):
                 filename = ''
                 changelog_path = ''
                 vcs_link = ''
+                relations = collections.OrderedDict()
 
                 for line in poolresults.splitlines():
                     line = line.decode('utf-8')
@@ -161,8 +183,12 @@ def plist(dist):
                         # files in this case, usually in the line format
                         # 72c1479a7564c47cc2643336332c1e1d 711 utopia-defaults_2016.05.21+1.dsc
                         filename = fields[-1]
+                    # Parse dependency lines
+                    for deptype, depname in DEPENDENCY_TYPES.items():
+                        if line.startswith(deptype + ':'):
+                            relations[depname] = line.split(' ', 1)[-1]
 
-                if filename:
+                if filename and (SHOW_POOL_LINKS or SHOW_CHANGELOGS):
                     # Then, once we've found the filename, look it up in the pool/ tree we made
                     # earlier.
                     #print("Found filename %s for %s" % (filename, fullname))
@@ -232,6 +258,11 @@ def plist(dist):
                         f.write("""<td><a href="{0}">{0}</a>""".format(vcs_link))
                     else:
                         f.write("""<td>N/A</td>""")
+                if SHOW_DEPENDENCIES:
+                    text = ''
+                    for depname, data in relations.items():
+                        text += """<b>{}</b>: {}<br>""".format(depname, data)
+                    f.write("""<td>{}</td>""".format(text))
                 f.write("""
 </tr>
 """)
