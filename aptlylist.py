@@ -261,7 +261,7 @@ def plist(dist):
                 if SHOW_DEPENDENCIES:
                     text = ''
                     for depname, data in relations.items():
-                        text += """<b>{}</b>: {}<br>""".format(depname, data)
+                        text += """<span class="dependency deptype-{0}">{0}</span>: {1}<br>""".format(depname, data)
                     f.write("""<td>{}</td>""".format(text))
                 f.write("""
 </tr>
