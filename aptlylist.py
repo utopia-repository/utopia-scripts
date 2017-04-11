@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-
-# HTML package listing script for aptly servers, as seen on https://packages.overdrivenetworks.com
-# This looks up snapshots related to repositories and mirror, and creates tables showing each
-# package's name, version, and architecture. It also supports optionally displaying links to
-# .deb/.dsc downloads, Vcs-Browser links, and generating changelogs.
+"""
+HTML package listing script for aptly servers, as seen on https://packages.overdrivenetworks.com
+This looks up snapshots related to repositories and mirror, and creates tables showing each
+package's name, version, and architecture. It also supports optionally displaying links to
+.deb/.dsc downloads, listing package relations (e.g. dependencies), and generating changelogs.
+"""
 import time
 import subprocess
 import sys
@@ -57,6 +58,7 @@ SHOW_DEPENDENCIES = True
 SHOW_EXTENDED_RELATIONS = False
 
 # Defines any extra styles / lines to put in <head>.
+# The gstyle.css for packages.o.c can be found at https://git.io/vSKJj for reference
 EXTRA_STYLES = """<link rel="stylesheet" type="text/css" href="gstyle.css">
 <!-- From http://www.kryogenix.org/code/browser/sorttable/ -->
 <script src="sorttable.js"></script>
@@ -86,13 +88,18 @@ if SHOW_POOL_LINKS or SHOW_CHANGELOGS:  # Pre-enumerate a list of all objects in
         os.mkdir(CHANGELOG_CACHE_DIR)
 
 DEPENDENCY_TYPES = {"Build-Depends": 'build-dep', "Build-Depends-Indep": 'build-idep',
-                    "Depends": 'dep', "Recommends": 'rec', "Suggests": 'sug'}
+                    "Depends": 'dep', "Recommends": 'rec', "Suggests": 'sug',
+                    "Enhances": 'enh',
+# Not sure whether Provides and Pre-Depends really belong here, but they're somewhat informative compared to the rest
+                    "Provides": "Provides", "Pre-Depends": "pdep"}
 
 # I don't think any official package tracker shows these, but I'm including them for
 # completeness. That said, I don't know of any established abbreviations so I'm
 # keeping them as-is.
 if SHOW_EXTENDED_RELATIONS:
-    DEPENDENCY_TYPES.update({"Conflicts": "Conflicts", "Breaks": "Breaks", "Replaces": "Replaces"})
+    DEPENDENCY_TYPES.update({"Conflicts": "Conflicts", "Breaks": "Breaks", "Replaces": "Replaces",
+                             "Enhances": "Enhances", "Build-Conflicts": "Build-Conflicts",
+                             "Build-Conflicts-Indep": "Build-Conflicts-Indep", "Built-Using": "Built-Using"})
 
 def plist(dist):
     packagelist = []
