@@ -13,6 +13,7 @@ import os
 import re
 import traceback
 import collections
+import html
 
 ### BEGIN CONFIGURATION VARIABLES ###
 
@@ -47,14 +48,23 @@ CHANGELOG_CACHE_DIR = "/srv/aptly/changelogcache"
 # generate changelogs. Any files larger than this size will be skipped.
 MAX_CHANGELOG_FILE_SIZE = 20971520  # 20 MB
 
-# Determines whether Vcs-Browser links should be shown.
+# Determines whether Vcs-Browser links should be shown. This may be time consuming for larger
+# repositories, since a package information call is made to aptly for every package in the repository.
 SHOW_VCS_LINKS = True
 
+# Determines whether package descriptions should be shown as tooltips in the package name field.
+# This may be time consuming for larger repositories, since a package information call is made to aptly
+# for every package in the repository.
+SHOW_DESCRIPTIONS = True
+
 # Determines whether dependencies/recommends/suggests for packages should be shown.
+# This may be time consuming for larger repositories, since a package information call is made to aptly
+# for every package in the repository.
 SHOW_DEPENDENCIES = True
 
 # Determines whether extended package relations (Breaks/Conflicts/Replaces) will be shown.
 # This can be added for completeness but usually isn't of great value to end users.
+# This option requires SHOW_DEPENDENCIES to be enabled.
 SHOW_EXTENDED_RELATIONS = False
 
 # Defines any extra styles / lines to put in <head>.
@@ -158,8 +168,11 @@ def plist(dist):
 </tr>
 """)
         for p in packagelist:
+            short_desc = ''
+
             # If enabled, try to find a link to the file for the package given.
-            if SHOW_POOL_LINKS or SHOW_CHANGELOGS or SHOW_DEPENDENCIES:
+            # XXX: is all this conditional stuff needed or should we make the 'package show' call implicit?
+            if SHOW_POOL_LINKS or SHOW_CHANGELOGS or SHOW_DEPENDENCIES or SHOW_DESCRIPTIONS:
                 #print("Finding links for %s" % str(p))
                 name, version, arch, fullname = p
                 download_link = arch
@@ -187,6 +200,10 @@ def plist(dist):
                         # files in this case, usually in the line format
                         # 72c1479a7564c47cc2643336332c1e1d 711 utopia-defaults_2016.05.21+1.dsc
                         filename = fields[-1]
+
+                    if line.startswith('Description:'):
+                        short_desc = line.split(' ', 1)[-1]
+
                     # Parse dependency lines
                     for deptype in DEPENDENCY_TYPES:
                         if line.startswith(deptype + ':'):
@@ -245,6 +262,9 @@ def plist(dist):
 
                             #print("Found %s for %s" % (poolfile, fullname))
                             break
+                if short_desc:
+                    # Format the name in a tooltip span if a description is available.
+                    name = """<span title="{0} - {1}" class="tooltip">{0}</span>""".format(name, html.escape(short_desc))
 
                 f.write(("""<tr>
 <td>{}</td>
