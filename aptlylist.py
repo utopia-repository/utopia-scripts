@@ -87,19 +87,16 @@ if SHOW_POOL_LINKS or SHOW_CHANGELOGS:  # Pre-enumerate a list of all objects in
         print("Creating cache dir %s" % CHANGELOG_CACHE_DIR)
         os.mkdir(CHANGELOG_CACHE_DIR)
 
-DEPENDENCY_TYPES = {"Build-Depends": 'build-dep', "Build-Depends-Indep": 'build-idep',
-                    "Depends": 'dep', "Recommends": 'rec', "Suggests": 'sug',
-                    "Enhances": 'enh',
+DEPENDENCY_TYPES = ['Build-Depends', 'Build-Depends-Indep', 'Depends', 'Enhances', 'Recommends', 'Suggests',
 # Not sure whether Provides and Pre-Depends really belong here, but they're somewhat informative compared to the rest
-                    "Provides": "Provides", "Pre-Depends": "pdep"}
+                    'Provides', 'Pre-Depends']
 
 # I don't think any official package tracker shows these, but I'm including them for
 # completeness. That said, I don't know of any established abbreviations so I'm
 # keeping them as-is.
 if SHOW_EXTENDED_RELATIONS:
-    DEPENDENCY_TYPES.update({"Conflicts": "Conflicts", "Breaks": "Breaks", "Replaces": "Replaces",
-                             "Enhances": "Enhances", "Build-Conflicts": "Build-Conflicts",
-                             "Build-Conflicts-Indep": "Build-Conflicts-Indep", "Built-Using": "Built-Using"})
+    DEPENDENCY_TYPES += ["Conflicts", "Breaks", "Replaces", "Build-Conflicts",
+                         "Build-Conflicts-Indep", "Built-Using"]
 
 def plist(dist):
     packagelist = []
@@ -191,9 +188,9 @@ def plist(dist):
                         # 72c1479a7564c47cc2643336332c1e1d 711 utopia-defaults_2016.05.21+1.dsc
                         filename = fields[-1]
                     # Parse dependency lines
-                    for deptype, depname in DEPENDENCY_TYPES.items():
+                    for deptype in DEPENDENCY_TYPES:
                         if line.startswith(deptype + ':'):
-                            relations[depname] = line.split(' ', 1)[-1]
+                            relations[deptype] = line.split(' ', 1)[-1]
 
                 if filename and (SHOW_POOL_LINKS or SHOW_CHANGELOGS):
                     # Then, once we've found the filename, look it up in the pool/ tree we made
@@ -268,7 +265,7 @@ def plist(dist):
                 if SHOW_DEPENDENCIES:
                     text = ''
                     for depname, data in relations.items():
-                        text += """<span class="dependency deptype-{0}">{0}</span>: {1}<br>""".format(depname, data)
+                        text += """<span class="dependency deptype-{2}">{0}</span>: {1}<br>""".format(depname, data, depname.lower())
                     f.write("""<td>{}</td>""".format(text))
                 f.write("""
 </tr>
