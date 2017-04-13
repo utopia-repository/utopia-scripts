@@ -53,8 +53,10 @@ import subprocess
 import sys
 import tempfile
 import argparse
+import multiprocessing
 
-PACKAGES_FILES = {}
+manager = multiprocessing.Manager()
+PACKAGES_FILES = manager.dict()
 
 def download_packages_file(repo, dist, suite, arch, skip_download=False):
     """
@@ -77,6 +79,8 @@ def download_packages_file(repo, dist, suite, arch, skip_download=False):
     else:
         print('Reusing packages file %s' % filename)
 
+    global PACKAGES_FILES
+    PACKAGES_FILES[(repo, dist, suite, arch)] = filename
     return filename
 
 def test_dist(repo, dist, suite, arch, outfile=None):
@@ -111,6 +115,7 @@ if __name__ == '__main__':
     parser.add_argument("-t", "--tempdir", help="sets the temporary directory to download Packages files into", type=str, default=tempfile.mkdtemp())
     parser.add_argument("-o", "--outdir", help="sets the output directory to write results to", type=str, default=os.getcwd())
     parser.add_argument("-s", "--skip-download", help="skips downloading new Packages file (most useful with a custom tempdir)", action='store_true')
+    parser.add_argument("-p", "--processes", help="amount of processes to use (defaults to amount of CPU cores)", type=int, default=os.cpu_count() or 1)
     args = parser.parse_args()
 
     print('Using %s as tempdir' % args.tempdir)
@@ -118,26 +123,41 @@ if __name__ == '__main__':
 
     os.chdir(args.tempdir)
 
-    # Iterate over all target dists and their dependencies, and get their package files
+    needed_packages = set()
+
     for arch in TARGET_ARCHS:
         for target in TARGET_DISTS:
             # Store these as a 4-item tuple: repo name, distribution, suite, and architecture
             repoidx = (target[0], target[1], target[2], arch)
-            if repoidx not in PACKAGES_FILES:
-                # If we already know a repository's packages file, don't redownload it
-                PACKAGES_FILES[repoidx] = download_packages_file(*repoidx, skip_download=args.skip_download)
+            needed_packages.add(repoidx)
 
+            # Process this target's dependencies as well
             for dependency in TARGET_DISTS[target]:
                 repoidx = (dependency[0], dependency[1], dependency[2], arch)
-                if repoidx not in PACKAGES_FILES:
-                    PACKAGES_FILES[repoidx] = download_packages_file(*repoidx, skip_download=args.skip_download)
-    print()
+                needed_packages.add(repoidx)
 
-    for arch in TARGET_ARCHS:
-        for target in TARGET_DISTS:
-            outfile = 'Installcheck_%s_%s_%s_%s.txt' % (target[0], target[1], target[2], arch)
-            outfile = os.path.join(args.outdir, outfile)
-            print('Writing installability check results for target %s to %s' % (target, outfile))
-            with open(outfile, 'w') as f:
-                test_dist(target[0], target[1], target[2], arch, outfile=f)
+    def download_wrapper(pkg):
+        print('Running download_packages_file in Process %s' % multiprocessing.current_process())
+        download_packages_file(*pkg, skip_download=args.skip_download)
 
+    def test_dist_wrapper(target, outfile=None, **kwargs):
+        outfile = 'Installcheck_%s_%s_%s_%s.txt' % (target[0], target[1], target[2], arch)
+        outfile = os.path.join(args.outdir, outfile)
+
+        print('Writing installability check results for target %s to %s' % (target, outfile))
+        with open(outfile, 'w') as f:
+            print('Running test_dist in Process %s' % multiprocessing.current_process())
+            test_dist(*target, outfile=f)
+
+    with multiprocessing.Pool(args.processes) as pool:
+        # Download all the Packages files we need in separate worker processes, to speed up the process.
+        pool.map(download_wrapper, needed_packages)
+
+        # Build a list of targets to run
+        real_targets = []
+        for arch in TARGET_ARCHS:
+            for target in TARGET_DISTS:
+                real_targets.append((target[0], target[1], target[2], arch))
+
+        # Run them!
+        pool.map(test_dist_wrapper, real_targets)
