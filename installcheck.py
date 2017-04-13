@@ -119,6 +119,6 @@ if __name__ == '__main__':
             outfile = 'Installcheck_%s_%s_%s_%s.txt' % (target[0], target[1], target[2], arch)
             outfile = os.path.join(args.outdir, outfile)
             print('Writing installability check results for target %s to %s' % (target, outfile))
-            with open(outfile, 'a') as f:
+            with open(outfile, 'w') as f:
                 test_dist(target[0], target[1], target[2], arch, outfile=f)
 
