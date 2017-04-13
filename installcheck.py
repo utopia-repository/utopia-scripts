@@ -9,7 +9,8 @@ By default, this downloads Packages files for the relevant distributions into a 
 
 # A list of known repositories.
 REPOS = {'debian': 'http://httpredir.debian.org/debian',
-         'urepo': 'https://packages.overdrivenetworks.com'}
+         'urepo': 'https://packages.overdrivenetworks.com',
+         'ubuntu': 'http://archive.ubuntu.com/ubuntu'}
 
 # A list of architectures to test against.
 TARGET_ARCHS = ['amd64', 'i386']
@@ -22,7 +23,25 @@ TARGET_DISTS = {
                                   ('debian', 'sid', 'non-free'),
                                   ('urepo', 'sid', 'main')],
     ('urepo', 'sid', 'forks'): [('debian', 'sid', 'main'),
-                                 ('urepo', 'sid', 'main')],
+                                ('urepo', 'sid', 'main')],
+    ('urepo', 'sid-nightlies', 'main'): [('debian', 'sid', 'main'),
+                                    ('urepo', 'sid', 'main')],
+    ('urepo', 'jessie', 'main'): [('debian', 'jessie', 'main'),
+                                  #('debian', 'jessie-backports', 'main'),
+                                  ('urepo', 'jessie', 'imports'),
+                                  ],
+    ('urepo', 'jessie', 'imports'): [('debian', 'jessie', 'main'),
+                                     ('debian', 'jessie', 'contrib'),
+                                     ('debian', 'jessie', 'non-free'),
+                                     ('urepo', 'jessie', 'main'),
+                                     ],
+    ('urepo', 'jessie-backports', 'main'): [('debian', 'jessie-backports', 'main'),
+                                            ('debian', 'jessie', 'main')],
+    ('urepo', 'jessie-backports', 'testing'): [('debian', 'jessie-backports', 'main'),
+                                               ('urepo', 'jessie-backports', 'main'),
+                                               ('debian', 'jessie', 'main')],
+    ('urepo', 'xenial', 'main'): [('ubuntu', 'xenial', 'main'),
+                                  ('ubuntu', 'xenial', 'universe')],
 }
 
 ### END CONFIGURATION
