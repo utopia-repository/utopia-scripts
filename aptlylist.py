@@ -262,15 +262,16 @@ def plist(dist):
 
                             #print("Found %s for %s" % (poolfile, fullname))
                             break
-                if short_desc:
+                name_extended = name
+                if short_desc and SHOW_DESCRIPTIONS:
                     # Format the name in a tooltip span if a description is available.
-                    name = """<span title="{0} - {1}" class="tooltip">{0}</span>""".format(name, html.escape(short_desc))
+                    name_extended = """<span title="{0} - {1}" class="tooltip">{0}</span>""".format(name, html.escape(short_desc))
 
-                f.write(("""<tr>
-<td>{}</td>
-<td>{}</td>
-<td>{}</td>
-""".format(name, version, download_link)))
+                f.write(("""<tr id="{0}_{3}">
+<td>{4}</td>
+<td>{1}</td>
+<td>{2}</td>
+""".format(name, version, download_link, html.escape(arch), name_extended)))
                 if SHOW_CHANGELOGS:
                     # Only fill in the changelog column if it is enabled, and the changelog exists.
                     if changelog_path and os.path.exists(changelog_path):
