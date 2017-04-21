@@ -1,0 +1,3 @@
+Installcheck_*.txt
+*.py[cod]
+__pycache__
