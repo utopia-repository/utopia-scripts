@@ -141,7 +141,7 @@ if __name__ == '__main__':
         download_packages_file(*pkg, skip_download=args.skip_download)
 
     def test_dist_wrapper(target, outfile=None, **kwargs):
-        outfile = 'Installcheck_%s_%s_%s_%s.txt' % (target[0], target[1], target[2], arch)
+        outfile = 'Installcheck_%s_%s_%s_%s.txt' % target
         outfile = os.path.join(args.outdir, outfile)
 
         print('Writing installability check results for target %s to %s' % (target, outfile))
