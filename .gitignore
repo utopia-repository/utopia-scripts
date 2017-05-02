@@ -1,3 +1,5 @@
 Installcheck_*.txt
 *.py[cod]
 __pycache__
+*.log
+aptly-snapshots*.list*
