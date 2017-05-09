@@ -79,7 +79,7 @@ for line in text.splitlines():
                     diff_f.write('Changes from %s to %s:\n' % (old_snapshot, snapshot))
                     diff_f.write(diff)
                 with open(ANNOUNCE_DEST, 'w') as fifo_f:
-                    fifo_f.write(ANNOUNCE_FORMAT.format(target, old_snapshot, snapshot, diff_filename))
+                    fifo_f.write(ANNOUNCE_FORMAT.format(target.lstrip('/.'), old_snapshot, snapshot, diff_filename))
                     fifo_f.write('\n')
 
 print()
