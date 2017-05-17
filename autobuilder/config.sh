@@ -3,9 +3,6 @@
 # Remote name of the upstream sources in Git
 GITBUILDER_UPSTREAM_REMOTE="upstream"
 
-# Default branch name (for "unstable" packaging content)
-GITBUILDER_DEFAULT_BRANCH="master"
-
 # Suffix to replace the Debian package revision with
 VERSION_SUFFIX="-0utopia0~autobuild"
 
