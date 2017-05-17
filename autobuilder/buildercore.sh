@@ -22,33 +22,45 @@ build_and_import () {
 	announce_info "If you see a glob above, it probably means something went terribly wrong..."
 }
 
+autogit () {
+	GIT_AUTHOR_EMAIL="$EMAIL" GIT_COMMITTER_EMAIL="$EMAIL" GIT_AUTHOR_NAME="$NAME" GIT_COMMITTER_NAME="$NAME" git $*
+}
+
 build_git () {
 	PACKAGE="$1"
-	BRANCH="$2"
+	BRANCH="${GITBUILDER_UPSTREAM_REMOTE}/${2}"
+	PACKAGING_BRANCH="$3"
 
 	cd "$CURDIR"
 	echo "Building $PACKAGE using branch ${BRANCH}"
 	cd "$PACKAGE"
 
 	# Bump the version
-	git fetch "$UPSTREAM_REMOTE"
+	git fetch "$GITBUILDER_UPSTREAM_REMOTE"
 	VERSION="$(git describe --tags ${BRANCH} 2>&1 | sed -r 's/-([0-9]+)-g([0-9a-f]+)$/+git\1~\2/' | sed -r 's/^([0-9.]+)-?(alpha|beta|a|b|rc)/\1~\2/')"
 	DEBVERSION="${VERSION}${VERSION_SUFFIX}"
 
+	echo "Checking out Git branch $PACKAGING_BRANCH"
+
+	git checkout -f "$PACKAGING_BRANCH" || (echo "Failed to checkout Git branch $PACKAGING_BRANCH" && cd "$CURDIR" && return)
+	autogit pull --no-edit  # Merge the packaging branch's changes too
+
 	if [[ "$DEBVERSION" == "$(dpkg-parsechangelog --show-field Version)" ]]; then
 		echo "[${PACKAGE}] Skipping build (new version $DEBVERSION would be the same as what we have)" | tee "${ANNOUNCE_FIFO_TARGET}"
-		return
+		cd "$CURDIR" && return
 	fi
 
-	# Merge with upstream
-	git stash
-	GIT_AUTHOR_EMAIL="$EMAIL" GIT_COMMITTER_EMAIL="$EMAIL" GIT_AUTHOR_NAME="$NAME" GIT_COMMITTER_NAME="$NAME" git merge --no-edit "$BRANCH"
-	DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dch -v "$DEBVERSION" --distribution unstable "Auto-build."
+	# Bump the version & commit changes.
+	autogit merge --no-edit "$BRANCH"
+
+	DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dch -v "$DEBVERSION" --distribution "$BUILD_DIST" "Auto-build." --force-distribution
+	autogit commit "debian/" -m "Auto-building $PACKAGE version $DEBVERSION"
 
 	# Generate the tarball
 	git archive "$BRANCH" -o ../"${PACKAGE}_${VERSION}.orig.tar.gz"
 
 	build_and_import
+	cd "$CURDIR"
 }
 
 publish () {

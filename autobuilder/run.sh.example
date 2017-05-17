@@ -1,0 +1,23 @@
+#!/bin/bash
+
+CURDIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+cd "$CURDIR"
+
+echo 'Sourcing config.sh'
+source "config.sh"
+echo 'Sourcing buildercore.sh'
+source "buildercore.sh"
+
+# Repositories to build: customize everything under this line!
+build_git "youtube-dl" "master" "master"
+build_git "pylink" "devel" "packaging/debian/sid-nightlies"
+
+publish
+
+echo 'Sourcing config-jessie.sh'
+source "config-jessie.sh"
+
+build_git "youtube-dl" "master" "jessie"
+build_git "pylink" "devel" "packaging/debian/jessie-nightlies"
+
+publish
