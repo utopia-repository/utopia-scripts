@@ -226,6 +226,12 @@ def plist(dist):
                                 else:
                                     cache_path = changelog_path
 
+                                if os.path.exists(cache_path) and os.path.getsize(cache_path) == 0:
+                                    # Work around 0-size changelog files that sometimes pop-up - I'm not sure why this happens?
+                                    for path in set((cache_path, changelog_path)):
+                                        print("    Removing invalid 0-size changelog file %s" % path)
+                                        os.remove(path)
+
                                 if not os.path.exists(changelog_path):
                                     # There's a new changelog file name for every version, so don't repeat generation
                                     # for versions that already have a changelog.
