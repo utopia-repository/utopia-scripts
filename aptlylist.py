@@ -245,8 +245,8 @@ def plist(dist):
                                         break
 
                                     if not os.path.exists(cache_path):
-                                        # Cache doesn't exist, so make a new file.
-                                        print("    Reading .deb %s" % poolfile.name)
+                                        # Cached changelog doesn't exist, so make a new file.
+                                        print("    Reading .deb %s" % full_path)
                                         deb = debfile.DebFile(full_path)
                                         changelog = deb.changelog()
                                         if changelog:
@@ -257,6 +257,9 @@ def plist(dist):
                                                 except ValueError:  # Something went wrong, bleh.
                                                     traceback.print_exc()
                                                     continue
+                                        else:
+                                            print("    Changelog generation FAILED for %s (deb.changelog() is empty?)" % fullname)
+                                            continue
 
                                     if changelog_path != cache_path:
                                         print("    Linking cached changelog %s to %s" % (cache_path, changelog_path))
