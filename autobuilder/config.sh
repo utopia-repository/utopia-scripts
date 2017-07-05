@@ -24,3 +24,6 @@ GPG_KEY="EEBB01E6"
 
 # FIFO target (e.g. via ii to IRC) to announce to after the build is finished
 ANNOUNCE_FIFO_TARGET="${HOME}/ii/irc.overdrivenetworks.com/#dev/in"
+
+# Determines whether we should force rebuild existing builds
+FORCE_SAME_BUILD=false

@@ -45,7 +45,8 @@ build_git () {
 	git checkout -f "$PACKAGING_BRANCH" || (echo "Failed to checkout Git branch $PACKAGING_BRANCH" && cd "$CURDIR" && return)
 	autogit pull --no-edit  # Merge the packaging branch's changes too
 
-	if [[ "$DEBVERSION" == "$(dpkg-parsechangelog --show-field Version)" ]]; then
+	LASTVERSION="$(dpkg-parsechangelog --show-field Version)"
+	if [[ "$DEBVERSION" == "$LASTVERSION" && "$FORCE_SAME_BUILD" != true ]]; then
 		echo "[${PACKAGE}] Skipping build (new version $DEBVERSION would be the same as what we have)" | tee "${ANNOUNCE_FIFO_TARGET}"
 		cd "$CURDIR" && return
 	fi
@@ -53,10 +54,13 @@ build_git () {
 	# Bump the version & commit changes.
 	autogit merge --no-edit "$BRANCH"
 
-	DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dch -v "$DEBVERSION" --distribution "$BUILD_DIST" "Auto-build." --force-distribution
-	autogit commit "debian/" -m "Auto-building $PACKAGE version $DEBVERSION"
+	if [[ "$DEBVERSION" != "$LASTVERSION" ]]; then
+		DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dch -v "$DEBVERSION" --distribution "$BUILD_DIST" "Auto-build." --force-distribution
+		autogit commit "debian/" -m "Auto-building $PACKAGE version $DEBVERSION"
+	fi
 
 	# Generate the tarball
+	echo "Generating tarball for ${PACKAGE}_${VERSION}.orig.tar.gz ..."
 	git archive "$BRANCH" -o ../"${PACKAGE}_${VERSION}.orig.tar.gz"
 
 	build_and_import
