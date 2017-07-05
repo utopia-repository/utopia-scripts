@@ -21,3 +21,4 @@ build_git "youtube-dl" "master" "jessie"
 build_git "pylink" "devel" "packaging/debian/jessie-nightlies"
 
 publish
+cleanup

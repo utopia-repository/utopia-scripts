@@ -66,3 +66,8 @@ build_git () {
 publish () {
 	aptly publish update -gpg-key="$GPG_KEY" "$TARGET_DIST"
 }
+
+cleanup () {
+    echo "Cleaning up..."
+	rm -v *.tar.* *.buildinfo *.dsc *.changes
+}
