@@ -4,12 +4,16 @@ Installability checker for Apt repositories, using dose-debcheck as a backend.
 
 By default, this downloads Packages files for the relevant distributions into a temporary folder (as Packages_REPO_DIST_SUITE_ARCH) and outputs results as Installcheck_REPO_DIST_SUITE_ARCH.txt in the current folder.
 """
+from __future__ import print_function
 
 ### BEGIN CONFIGURATION
 
 # A list of known repositories.
 REPOS = {'debian': 'http://httpredir.debian.org/debian',
          'urepo': 'https://packages.overdrivenetworks.com',
+         'urepo-test-ubuntu-lts': 'https://packages.overdrivenetworks.com',
+         'urepo-test-ubuntu-stable': 'https://packages.overdrivenetworks.com',
+         'urepo-test-ubuntu-devel': 'https://packages.overdrivenetworks.com',
          'ubuntu': 'http://archive.ubuntu.com/ubuntu'}
 
 # A list of architectures to test against.
@@ -42,6 +46,12 @@ TARGET_DISTS = {
                                                ('debian', 'jessie', 'main')],
     ('urepo', 'xenial', 'main'): [('ubuntu', 'xenial', 'main'),
                                   ('ubuntu', 'xenial', 'universe')],
+    ('urepo-test-ubuntu-lts', 'sid', 'main'): [('ubuntu', 'xenial', 'main'),
+                                               ('ubuntu', 'xenial', 'universe')],
+    ('urepo-test-ubuntu-stable', 'sid', 'main'): [('ubuntu', 'zesty', 'main'),
+                                                  ('ubuntu', 'zesty', 'universe')],
+    ('urepo-test-ubuntu-devel', 'sid', 'main'): [('ubuntu', 'devel', 'main'),
+                                                 ('ubuntu', 'devel', 'universe')],
 }
 
 ### END CONFIGURATION
