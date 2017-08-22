@@ -11,7 +11,6 @@ from __future__ import print_function
 # A list of known repositories.
 REPOS = {'debian': 'http://httpredir.debian.org/debian',
          'urepo': 'https://packages.overdrivenetworks.com',
-         'urepo-test-ubuntu-lts': 'https://packages.overdrivenetworks.com',
          'urepo-test-ubuntu-stable': 'https://packages.overdrivenetworks.com',
          'urepo-test-ubuntu-devel': 'https://packages.overdrivenetworks.com',
          'ubuntu': 'http://archive.ubuntu.com/ubuntu'}
@@ -59,8 +58,6 @@ TARGET_DISTS = {
 
     ('urepo', 'xenial', 'main'): [('ubuntu', 'xenial', 'main'),
                                   ('ubuntu', 'xenial', 'universe')],
-    ('urepo-test-ubuntu-lts', 'sid', 'main'): [('ubuntu', 'xenial', 'main'),
-                                               ('ubuntu', 'xenial', 'universe')],
     ('urepo-test-ubuntu-stable', 'sid', 'main'): [('ubuntu', 'zesty', 'main'),
                                                   ('ubuntu', 'zesty', 'universe')],
     ('urepo-test-ubuntu-devel', 'sid', 'main'): [('ubuntu', 'devel', 'main'),
