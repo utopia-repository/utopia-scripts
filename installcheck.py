@@ -106,7 +106,7 @@ def download_packages_file(repo, dist, suite, arch, skip_download=False):
     PACKAGES_FILES[(repo, dist, suite, arch)] = filename
     return filename
 
-def test_dist(repo, dist, suite, arch, outfile=None):
+def test_dist(repo, dist, suite, arch, outfilename=None):
     """
     Runs dose-debcheck on a repo, dist, suite, and arch pair.
     """
@@ -123,15 +123,20 @@ def test_dist(repo, dist, suite, arch, outfile=None):
     print('Running command', cmd)
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 
-    if outfile:
-        outfile.write('Results for %s, %s, %s:\n' % (repo, dist, suite))
-
     # Read stdout as dose-debcheck runs instead of only returning results at the end.
+    lines = []  # XXX: is storing the output text this way this efficient?
     for line in process.stdout:
         line = line.decode()
         print(line, end='')
-        if outfile:
-            outfile.write(line)
+        lines.append(line)
+
+    process.wait()
+    print('process returncode: %s' % process.returncode)
+    if outfilename is not None and process.returncode != 0:
+        with open(outfilename, 'w') as outfile:
+            # Only write reports for combinations that fail testing.
+            outfile.write('Results for %s, %s, %s:\n' % (repo, dist, suite))
+            outfile.writelines(lines)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
@@ -168,9 +173,8 @@ if __name__ == '__main__':
         outfile = os.path.join(args.outdir, outfile)
 
         print('Writing installability check results for target %s to %s' % (target, outfile))
-        with open(outfile, 'w') as f:
-            print('Running test_dist in Process %s' % multiprocessing.current_process())
-            test_dist(*target, outfile=f)
+        print('Running test_dist in Process %s' % multiprocessing.current_process())
+        test_dist(*target, outfilename=outfile)
 
     with multiprocessing.Pool(args.processes) as pool:
         # Download all the Packages files we need in separate worker processes, to speed up the process.
