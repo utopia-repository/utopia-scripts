@@ -45,8 +45,7 @@ TARGET_DISTS = {
                                             ('debian', 'jessie', 'main')],
 
     ('urepo', 'stretch', 'main'): [('debian', 'stretch', 'main'),
-                                   #('debian', 'stretch-backports', 'main'),
-                                   #('urepo', 'stretch-backports', 'main'),
+                                   ('debian', 'stretch-backports', 'main'),
                                    ('urepo', 'stretch', 'imports'),
                                   ],
     ('urepo', 'stretch', 'imports'): [('debian', 'stretch', 'main'),
@@ -57,8 +56,6 @@ TARGET_DISTS = {
     ('urepo', 'stretch', 'forks'): [('debian', 'stretch', 'main'),
                                     ('urepo', 'stretch', 'main'),
                                    ],
-    #('urepo', 'stretch-backports', 'main'): [('debian', 'stretch-backports', 'main'),
-    #                                         ('debian', 'stretch', 'main')],
 
     ('urepo', 'xenial', 'main'): [('ubuntu', 'xenial', 'main'),
                                   ('ubuntu', 'xenial', 'universe')],
