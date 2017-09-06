@@ -10,7 +10,7 @@ announce_info () {
 
 build_and_import () {
 	# Build
-	DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dpkg-buildpackage -S -us -uc -d
+	DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dpkg-buildpackage -S -us -uc -d -sa
 	sudo PBUILDER_DIST="$BUILD_DIST" cowbuilder --update
 	mkdir -p "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"
 	sudo PBUILDER_DIST="$BUILD_DIST" cowbuilder --build ../"${PACKAGE}_${DEBVERSION}.dsc" --buildresult "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"
@@ -55,7 +55,7 @@ build_git () {
 	autogit merge --no-edit "$BRANCH"
 
 	if [[ "$DEBVERSION" != "$LASTVERSION" ]]; then
-		DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dch -v "$DEBVERSION" --distribution "$BUILD_DIST" "Auto-build." --force-distribution
+		DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dch -bv "$DEBVERSION" --distribution "$BUILD_DIST" "Auto-build." --force-distribution
 		autogit commit "debian/" -m "Auto-building $PACKAGE version $DEBVERSION"
 	fi
 

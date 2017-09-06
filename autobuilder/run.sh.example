@@ -13,6 +13,7 @@ build_git "youtube-dl" "master" "master"
 build_git "pylink" "devel" "packaging/debian/sid-nightlies"
 
 publish
+sleep 3
 
 echo 'Sourcing config-jessie.sh'
 source "config-jessie.sh"
@@ -21,4 +22,13 @@ build_git "youtube-dl" "master" "jessie"
 build_git "pylink" "devel" "packaging/debian/jessie-nightlies"
 
 publish
+sleep 3
+
+echo 'Sourcing config-stretch.sh'
+source "config-stretch.sh"
+
+build_git "youtube-dl" "master" "stretch-nightlies"
+build_git "pylink" "devel" "packaging/debian/stretch-nightlies"
+publish
+
 cleanup
