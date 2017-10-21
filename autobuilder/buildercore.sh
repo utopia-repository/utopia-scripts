@@ -13,13 +13,17 @@ echo "Using OUTPUT_DIR $OUTPUT_DIR"
 build_and_import () {
 	if [[ "$UTOPIAAB_DRY_RUN" != true ]]; then # read env var
 		# Build
+		echo "Building .dsc in $(pwd)"
 		DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dpkg-buildpackage -S -us -uc -d -sa
 		sudo PBUILDER_DIST="$BUILD_DIST" cowbuilder --update
-		mkdir -p "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"
-		sudo PBUILDER_DIST="$BUILD_DIST" cowbuilder --build ../"${PACKAGE}_${DEBVERSION}.dsc" --buildresult "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"
-		cd "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"
 
-		aptly repo add "$TARGET_DIST" "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"/*.deb "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"/*.dsc
+		PKGDIR="${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"
+		mkdir -p "$PKGDIR"
+
+		echo "Building .debs in $(pwd)"
+		sudo PBUILDER_DIST="$BUILD_DIST" cowbuilder --build "../${PACKAGE}_${DEBVERSION}.dsc" --buildresult "${PKGDIR}"
+
+		aptly repo add "$TARGET_DIST" "$PKGDIR"/*.deb "$PKGDIR"/*.dsc
 		if [[ $? -eq 0 ]]; then
 			announce_info "New files for ${TARGET_DIST}: " "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"/*.deb "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"/*.dsc
 		else
@@ -57,7 +61,7 @@ build_git () {
 	VERSIONFILE=".utopiaab_last_version_${BUILD_DIST}"
 
 	LASTVERSION="$(cat $VERSIONFILE)"
-	if [[ "$DEBVERSION" == "$LASTVERSION" && "$FORCE_SAME_BUILD" != true ]]; then
+	if [[ "$DEBVERSION" == "$LASTVERSION" && "$UTOPIAAB_FORCE_REBUILD" != true ]]; then
 		echo "[${PACKAGE}] Skipping build (new version $DEBVERSION would be the same as what we have)" | tee "${ANNOUNCE_FIFO_TARGET}"
 		cd "$CURDIR" && return
 	fi
@@ -73,7 +77,7 @@ build_git () {
 
 	# Generate the tarball
 	echo "Generating tarball for ${PACKAGE}_${VERSION}.orig.tar.gz ..."
-	git archive "$BRANCH" -o ../"${PACKAGE}_${VERSION}.orig.tar.gz"
+	git archive "$BRANCH" -o "../${PACKAGE}_${VERSION}.orig.tar.gz"
 
 	build_and_import
 }
@@ -87,6 +91,7 @@ publish () {
 cleanup () {
 	if [[ "$UTOPIAAB_DRY_RUN" != true ]]; then
 	    echo "Cleaning up..."
+		cd "$CURDIR"
 		rm -v *.tar.* *.buildinfo *.dsc *.changes
 	fi
 }

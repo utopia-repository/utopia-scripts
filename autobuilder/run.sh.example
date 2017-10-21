@@ -14,6 +14,7 @@ build_git "youtube-dl" "master" "master"
 publish
 sleep 3
 
+cd "$CURDIR"  # I don't know why this line is needed...
 echo 'Sourcing config-stretch.sh'
 source "config-stretch.sh"
 
