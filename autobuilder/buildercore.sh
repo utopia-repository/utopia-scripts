@@ -2,29 +2,38 @@
 #set -e
 
 # cd to the script directory
-CURDIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+CURDIR=$(dirname "$(readlink -f "$0")")
 
 announce_info () {
 	echo "[${PACKAGE}] $*" | tee "${ANNOUNCE_FIFO_TARGET}"
 }
 
+echo "Using OUTPUT_DIR $OUTPUT_DIR"
+
 build_and_import () {
-	# Build
-	DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dpkg-buildpackage -S -us -uc -d -sa
-	sudo PBUILDER_DIST="$BUILD_DIST" cowbuilder --update
-	mkdir -p "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"
-	sudo PBUILDER_DIST="$BUILD_DIST" cowbuilder --build ../"${PACKAGE}_${DEBVERSION}.dsc" --buildresult "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"
-	cd "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"
+	if [[ "$UTOPIAAB_DRY_RUN" != true ]]; then # read env var
+		# Build
+		DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dpkg-buildpackage -S -us -uc -d -sa
+		sudo PBUILDER_DIST="$BUILD_DIST" cowbuilder --update
+		mkdir -p "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"
+		sudo PBUILDER_DIST="$BUILD_DIST" cowbuilder --build ../"${PACKAGE}_${DEBVERSION}.dsc" --buildresult "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"
+		cd "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"
 
-	aptly repo add "$TARGET_DIST" *.deb *.dsc
-
-	announce_info "New files for ${TARGET_DIST}: " *.deb *.dsc
-	announce_info "If you see a glob above, it probably means something went terribly wrong..."
+		aptly repo add "$TARGET_DIST" "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"/*.deb "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"/*.dsc
+		if [[ $? -eq 0 ]]; then
+			announce_info "New files for ${TARGET_DIST}: " "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"/*.deb "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"/*.dsc
+		else
+			announce_info "Failed to add files for this package, check the logs for details."
+		fi
+	else
+		echo "Skipping actual build as UTOPIAAB_DRY_RUN was set..."
+	fi
 }
 
 autogit () {
 	GIT_AUTHOR_EMAIL="$EMAIL" GIT_COMMITTER_EMAIL="$EMAIL" GIT_AUTHOR_NAME="$NAME" GIT_COMMITTER_NAME="$NAME" git "$@"
 }
+
 
 build_git () {
 	PACKAGE="$1"
@@ -45,18 +54,21 @@ build_git () {
 	git checkout -f "$PACKAGING_BRANCH" || (echo "Failed to checkout Git branch $PACKAGING_BRANCH" && cd "$CURDIR" && return)
 	autogit pull --no-edit  # Merge the packaging branch's changes too
 
-	LASTVERSION="$(dpkg-parsechangelog --show-field Version)"
+	VERSIONFILE=".utopiaab_last_version_${BUILD_DIST}"
+
+	LASTVERSION="$(cat $VERSIONFILE)"
 	if [[ "$DEBVERSION" == "$LASTVERSION" && "$FORCE_SAME_BUILD" != true ]]; then
 		echo "[${PACKAGE}] Skipping build (new version $DEBVERSION would be the same as what we have)" | tee "${ANNOUNCE_FIFO_TARGET}"
 		cd "$CURDIR" && return
 	fi
 
 	# Bump the version & commit changes.
-	autogit merge --no-edit "$BRANCH"
+	autogit merge --no-edit --no-commit "$BRANCH"
 
 	if [[ "$DEBVERSION" != "$LASTVERSION" ]]; then
 		DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dch -bv "$DEBVERSION" --distribution "$BUILD_DIST" "Auto-build." --force-distribution
-		autogit commit "debian/" -m "Auto-building $PACKAGE version $DEBVERSION"
+		echo "Saving build version $DEBVERSION to $VERSIONFILE"
+		echo "$DEBVERSION" > "$VERSIONFILE"
 	fi
 
 	# Generate the tarball
@@ -64,14 +76,17 @@ build_git () {
 	git archive "$BRANCH" -o ../"${PACKAGE}_${VERSION}.orig.tar.gz"
 
 	build_and_import
-	cd "$CURDIR"
 }
 
 publish () {
-	aptly publish update -gpg-key="$GPG_KEY" "$TARGET_DIST"
+	if [[ "$UTOPIAAB_DRY_RUN" != true ]]; then
+		aptly publish update -gpg-key="$GPG_KEY" "$TARGET_DIST"
+	fi
 }
 
 cleanup () {
-    echo "Cleaning up..."
-	rm -v *.tar.* *.buildinfo *.dsc *.changes
+	if [[ "$UTOPIAAB_DRY_RUN" != true ]]; then
+	    echo "Cleaning up..."
+		rm -v *.tar.* *.buildinfo *.dsc *.changes
+	fi
 }

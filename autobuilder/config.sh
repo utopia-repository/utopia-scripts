@@ -11,7 +11,7 @@ NAME="Utopia Repository Auto-builder"
 EMAIL="webmaster@overdrivenetworks.com"
 
 # Note: no trailing / for OUTPUT_DIR
-OUTPUT_DIR="../builds"
+OUTPUT_DIR="$(mktemp -d /tmp/utopiaab.XXXXXXXXXX)" || (echo "Failed to create OUTPUT_DIR" && exit 1)
 
 # Target aptly distribution
 TARGET_DIST="sid-nightlies"
