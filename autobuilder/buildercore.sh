@@ -56,6 +56,8 @@ build_git () {
 	echo "Checking out Git branch $PACKAGING_BRANCH"
 
 	git checkout -f "$PACKAGING_BRANCH" || (echo "Failed to checkout Git branch $PACKAGING_BRANCH" && cd "$CURDIR" && return)
+	# Trash the last (temporary) changelog entry
+	git checkout debian/changelog
 	autogit pull --no-edit  # Merge the packaging branch's changes too
 
 	VERSIONFILE=".utopiaab_last_version_${BUILD_DIST}"
