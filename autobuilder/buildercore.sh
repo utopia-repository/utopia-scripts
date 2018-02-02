@@ -21,9 +21,9 @@ build_and_import () {
 		mkdir -p "$PKGDIR"
 
 		echo "Building .debs in $(pwd)"
-		sudo PBUILDER_DIST="$BUILD_DIST" cowbuilder --build "../${PACKAGE}_${DEBVERSION}.dsc" --buildresult "${PKGDIR}"
-
-		aptly repo remove "$TARGET_DIST" "\$Source ($PACKAGE) | $PACKAGE"
+		sudo PBUILDERSATISFYDEPENDSCMD=/usr/lib/pbuilder/pbuilder-satisfydepends-apt \
+			PBUILDER_DIST="$BUILD_DIST" cowbuilder --build "../${PACKAGE}_${DEBVERSION}.dsc" --buildresult "${PKGDIR}" \
+			&& aptly repo remove "$TARGET_DIST" "\$Source ($PACKAGE) | $PACKAGE"
 		aptly repo add "$TARGET_DIST" "$PKGDIR"/*.deb "$PKGDIR"/*.dsc
 		if [[ $? -eq 0 ]]; then
 			announce_info "New files for ${TARGET_DIST}: " "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"/*.deb "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"/*.dsc
