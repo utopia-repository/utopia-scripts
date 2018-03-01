@@ -58,8 +58,8 @@ TARGET_DISTS = {
 
     ('urepo', 'xenial', 'main'): [('ubuntu', 'xenial', 'main'),
                                   ('ubuntu', 'xenial', 'universe')],
-    ('urepo-test-ubuntu-stable', 'sid', 'main'): [('ubuntu', 'zesty', 'main'),
-                                                  ('ubuntu', 'zesty', 'universe')],
+    ('urepo-test-ubuntu-stable', 'sid', 'main'): [('ubuntu', 'artful', 'main'),
+                                                  ('ubuntu', 'artful', 'universe')],
     ('urepo-test-ubuntu-devel', 'sid', 'main'): [('ubuntu', 'devel', 'main'),
                                                  ('ubuntu', 'devel', 'universe')],
 }
