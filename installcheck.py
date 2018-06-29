@@ -16,7 +16,7 @@ REPOS = {'debian': 'http://httpredir.debian.org/debian',
          'ubuntu': 'http://archive.ubuntu.com/ubuntu'}
 
 # A list of architectures to test against.
-TARGET_ARCHS = ['amd64', 'i386']
+TARGET_ARCHS = ['amd64', 'i386', 'arm64']
 
 # Map (distribution, suite) pairs to test to a list of (repo, distribution, suite) pairs to depend on.
 TARGET_DISTS = {
