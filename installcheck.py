@@ -94,7 +94,12 @@ def download_packages_file(repo, dist, suite, arch, skip_download=False):
         print('Getting packages link %s' % link)
         # TODO: we should probably make sure the relevant Packages files actually exist...
         request = urllib.request.Request(link, headers={'User-Agent': "Mozilla/5.0 (compatible)"})
-        data = urllib.request.urlopen(request).read()
+        try:
+            data = urllib.request.urlopen(request).read()
+        except OSError:
+            traceback.print_exc()
+            print('Failed to download %s, skipping the combination (%r, %r, %r, %r)' % (link, repo, dist, suite, arch))
+            return
         extracted_data = gzip.decompress(data)
 
         with open(filename, 'wb') as f:
@@ -110,14 +115,21 @@ def test_dist(repo, dist, suite, arch, outfilename=None):
     """
     Runs dose-debcheck on a repo, dist, suite, and arch pair.
     """
+    if (repo, dist, suite, arch) not in PACKAGES_FILES:  # Unavailable combination
+        print("Skipping dist (%r, %r, %r, %r) as it is not available" % (repo, dist, suite, arch))
+        return
 
     deps = TARGET_DISTS[(repo, dist, suite)]
     # What we what to run is:
     #  dose-debcheck -fe Packages_of_target --bg Packages_of_dependency_1
     #  --bg Packages_of_dependency_2 ...
     cmd = ['dose-debcheck', '-fe', PACKAGES_FILES[(repo, dist, suite, arch)]]
-    for dep in deps:
-        dep = (dep[0], dep[1], dep[2], arch)
+    for dep_target in deps:
+        dep = (dep_target[0], dep_target[1], dep_target[2], arch)
+
+        if dep not in PACKAGES_FILES:  # Unavailable dependency
+            print("Skipping dist (%r, %r, %r, %r) as dependency %r not available" % (repo, dist, suite, arch, dep))
+            return
         cmd += ['--bg', PACKAGES_FILES[dep]]
 
     print('Running command', cmd)
