@@ -105,7 +105,11 @@ def download_packages_file(repo, dist, suite, arch, skip_download=False):
         with open(filename, 'wb') as f:
             f.write(extracted_data)
     else:
-        print('Reusing packages file %s' % filename)
+        if os.path.isfile(filename):
+            print('Reusing Packages file %s' % filename)
+        else:
+            print('Missing Packages file %s; some tests may be skipped!' % filename)
+            return
 
     global PACKAGES_FILES
     PACKAGES_FILES[(repo, dist, suite, arch)] = filename
