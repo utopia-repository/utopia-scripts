@@ -75,6 +75,8 @@ import sys
 import tempfile
 import argparse
 import multiprocessing
+import traceback
+import shutil
 
 manager = multiprocessing.Manager()
 PACKAGES_FILES = manager.dict()
@@ -143,6 +145,9 @@ if __name__ == '__main__':
     parser.add_argument("-s", "--skip-download", help="skips downloading new Packages file (most useful with a custom tempdir)", action='store_true')
     parser.add_argument("-p", "--processes", help="amount of processes to use (defaults to amount of CPU cores)", type=int, default=os.cpu_count() or 1)
     args = parser.parse_args()
+
+    if not shutil.which('dose-debcheck'):
+        raise OSError("Could not find 'dose-debcheck' in the PATH!")
 
     print('Using %s as tempdir' % args.tempdir)
     print('Using %s as outdir' % args.outdir)
