@@ -45,10 +45,24 @@ TARGET_DISTS = {
 
     ('urepo', 'xenial', 'main'): [('ubuntu', 'xenial', 'main'),
                                   ('ubuntu', 'xenial', 'universe')],
-    ('urepo-test-ubuntu-stable', 'sid', 'main'): [('ubuntu', 'artful', 'main'),
-                                                  ('ubuntu', 'artful', 'universe')],
-    ('urepo-test-ubuntu-devel', 'sid', 'main'): [('ubuntu', 'devel', 'main'),
-                                                 ('ubuntu', 'devel', 'universe')],
+
+    ('urepo', 'bionic', 'main'): [('ubuntu', 'bionic', 'main'),
+                                  ('ubuntu', 'bionic', 'universe')],
+    ('urepo', 'bionic', 'imports'): [('ubuntu', 'bionic', 'main'),
+                                      ('ubuntu', 'bionic', 'universe'),
+                                      ('ubuntu', 'bionic', 'restricted'),
+                                      ('ubuntu', 'bionic', 'multiverse'),
+                                      ('urepo', 'bionic', 'main')],
+    ('urepo', 'bionic', 'forks'): [('ubuntu', 'bionic', 'main'),
+                                   ('urepo', 'bionic', 'main')],
+    #('urepo-test-ubuntu-stable', 'sid', 'main'): [('ubuntu', 'bionic', 'main'),
+    #                                              ('ubuntu', 'bionic', 'universe')],
+    #('urepo-test-ubuntu-stable', 'sid', 'imports'): [('ubuntu', 'bionic', 'main'),
+    #                                                 ('ubuntu', 'bionic', 'universe'),
+    #                                                 ('ubuntu', 'bionic', 'restricted'),
+    #                                                 ('ubuntu', 'bionic', 'multiverse')],
+    #('urepo-test-ubuntu-devel', 'sid', 'main'): [('ubuntu', 'devel', 'main'),
+    #                                             ('ubuntu', 'devel', 'universe')],
 }
 
 ### END CONFIGURATION
