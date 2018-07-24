@@ -21,9 +21,11 @@ import html
 # contains the public dists/ and pool/ folders.
 OUTDIR = "/srv/aptly/public"
 
-# A list of repositories is automatically retrieved, but you can define extra distributions to
-# process here.
-EXTRA_DISTS = ["sid-imports"]
+# A list of repositories to parse.
+TARGET_DISTS = ["sid", "sid-extras", "sid-forks", "experimental",
+                "stretch", "stretch-imports", "stretch-forks",
+                "bionic", "bionic-imports", "bionic-forks",
+                "xenial"]
 
 # REGEX to look for snapshots for the distribution we're looking up. Defaults to ${dist}-YYYY-MM-DD.
 # If this regex doesn't match a certain distribution, it is treated as its own repository in lookup.
@@ -84,8 +86,6 @@ if not shutil.which('aptly'):
     sys.exit(1)
 
 print('Output directory set to: %s' % OUTDIR)
-repolist = subprocess.check_output(("aptly", "repo", "list", "-raw")).decode('utf-8').splitlines()
-repolist += EXTRA_DISTS
 snapshotlist = subprocess.check_output(("aptly", "snapshot", "list", "-raw")).decode('utf-8').splitlines()
 
 if SHOW_POOL_LINKS or SHOW_CHANGELOGS:  # Pre-enumerate a list of all objects in pool/
@@ -312,7 +312,8 @@ if __name__ == "__main__":
     try:
         repolist = [sys.argv[1]]
     except IndexError:
-        pass
+        repolist = TARGET_DISTS
+    print('Got target dists: %s' % repolist)
     for dist in repolist:
         print('Processing package lists for %r.' % dist)
         plist(dist)
