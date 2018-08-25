@@ -45,9 +45,9 @@ build_git () {
 	BRANCH="${GITBUILDER_UPSTREAM_REMOTE}/${2}"
 	PACKAGING_BRANCH="$3"
 
-	cd "$CURDIR"
 	echo "Building $PACKAGE using branch ${BRANCH}"
-	cd "$PACKAGE"
+	pushd "$CURDIR"
+	pushd "$PACKAGE"
 
 	# Bump the version
 	git fetch "$GITBUILDER_UPSTREAM_REMOTE"
@@ -66,7 +66,7 @@ build_git () {
 	LASTVERSION="$(cat $VERSIONFILE)"
 	if [[ "$DEBVERSION" == "$LASTVERSION" && "$UTOPIAAB_FORCE_REBUILD" != true ]]; then
 		echo "[${PACKAGE}] Skipping build (new version $DEBVERSION would be the same as what we have)" | tee "${ANNOUNCE_FIFO_TARGET}"
-		cd "$CURDIR" && return
+		popd; return
 	fi
 
 	# Bump the version & commit changes.
@@ -83,6 +83,7 @@ build_git () {
 	git archive "$BRANCH" -o "../${PACKAGE}_${VERSION}.orig.tar.gz"
 
 	build_and_import
+	popd  # Return to the last folder
 }
 
 publish () {
@@ -94,7 +95,6 @@ publish () {
 cleanup () {
 	if [[ "$UTOPIAAB_DRY_RUN" != true ]]; then
 	    echo "Cleaning up..."
-		cd "$CURDIR"
 		rm -v *.tar.* *.buildinfo *.dsc *.changes
 	fi
 }
