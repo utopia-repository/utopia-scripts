@@ -39,6 +39,12 @@ autogit () {
 	GIT_AUTHOR_EMAIL="$EMAIL" GIT_COMMITTER_EMAIL="$EMAIL" GIT_AUTHOR_NAME="$NAME" GIT_COMMITTER_NAME="$NAME" git "$@"
 }
 
+# In order: convert git commit to +git~commithash format,
+#           mangle prereleases into ~alpha1, etc.
+#           remove non-numeric headers if any
+cleanup_version () {
+	echo "$(sed -r 's/-([0-9]+)-g([0-9a-f]+)$/+git\1~\2/' <<< $1 | sed -r 's/^([0-9.]+)-?(alpha|beta|a|b|rc)/\1~\2/' | sed -r 's/^(([^0-9])+?)//')"
+}
 
 build_git () {
 	PACKAGE="$1"
@@ -51,7 +57,7 @@ build_git () {
 
 	# Bump the version
 	git fetch "$GITBUILDER_UPSTREAM_REMOTE"
-	VERSION="$(git describe --tags ${BRANCH} 2>&1 | sed -r 's/-([0-9]+)-g([0-9a-f]+)$/+git\1~\2/' | sed -r 's/^([0-9.]+)-?(alpha|beta|a|b|rc)/\1~\2/')"
+	VERSION="$(cleanup_version $(git describe --tags ${BRANCH} 2>&1))"
 	DEBVERSION="${VERSION}${VERSION_SUFFIX}"
 
 	echo "Checking out Git branch $PACKAGING_BRANCH"
