@@ -22,7 +22,7 @@ import html
 OUTDIR = "/srv/aptly/public"
 
 # A list of repositories to parse.
-TARGET_DISTS = ["sid", "sid-extras", "sid-forks", "experimental",
+TARGET_DISTS = ["sid", "sid-imports", "sid-forks", "experimental",
                 "stretch", "stretch-imports", "stretch-forks",
                 "bionic", "bionic-imports", "bionic-forks",
                 "xenial"]
