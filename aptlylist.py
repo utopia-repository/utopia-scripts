@@ -94,8 +94,12 @@ if SHOW_POOL_LINKS or SHOW_CHANGELOGS:
         sys.exit(1)
 
     import pathlib
-    # Pre-enumerate a list of all objects in pool/. XXX: ugly globs......
-    poolobjects = list(pathlib.Path(OUTDIR).glob('pool/*/*/*/*.*'))
+    # Enumerate all objects in pool/. XXX: ugly globs......
+    poolobjects = collections.defaultdict(set)
+    for repofile in pathlib.Path(OUTDIR).glob('pool/*/*/*/*.d??'):
+        # Store packages by name, not by name+version because epochs are not written into the filename!
+        pkgname = repofile.name.split('_')[0]
+        poolobjects[pkgname].add(repofile)
 
     if not os.path.exists(CHANGELOG_TARGET_DIR):
         print("Creating changelog dir %s" % CHANGELOG_TARGET_DIR)
@@ -217,7 +221,7 @@ def plist(dist):
                     # Then, once we've found the filename, look it up in the pool/ tree we made
                     # earlier.
                     #print("Found filename %s for %s" % (filename, fullname))
-                    for poolfile in poolobjects:
+                    for poolfile in poolobjects.get(name):
                         if poolfile.name == filename:
                             # Filename matched found, make the "arch" field a relative link to the path given.
                             location = poolfile.relative_to(OUTDIR)
