@@ -15,84 +15,30 @@ import traceback
 import collections
 import html
 
-### BEGIN CONFIGURATION VARIABLES ###
+try:
+    from aptlylist_conf import *
+except ImportError:
+    print("Error: Could not load aptlylist_conf.py; does that file exist?", file=sys.stderr)
+    traceback.print_exc()
+    sys.exit(1)
 
-# Sets the folder where the generated package lists should go. This should be the same folder that
-# contains the public dists/ and pool/ folders.
-OUTDIR = "/srv/aptly/public"
-
-# A list of repositories to parse.
-TARGET_DISTS = ["sid", "sid-imports", "sid-forks", "experimental",
-                "stretch", "stretch-imports", "stretch-forks",
-                "bionic", "bionic-imports", "bionic-forks",
-                "xenial"]
-
-# REGEX to look for snapshots for the distribution we're looking up. Defaults to ${dist}-YYYY-MM-DD.
-# If this regex doesn't match a certain distribution, it is treated as its own repository in lookup.
-SNAPSHOT_REGEX_BASE = r'^%s-\d{4}-\d{2}-\d{2}'  # First %s is the distribution name
-
-# Determines whether we should experimentally create pool/ links to each package entry. This may be
-# time consuming for larger repositories, because the script will index the entirety of pool/.
-SHOW_POOL_LINKS = True
-
-# Determines whether changelogs should be shown generated, using the format of synaptic
-# (i.e. PACKAGENAME_VERSION_ARCH.changelog).
-# This option requires the python3-debian module, and implies that 'SHOW_POOL_LINKS' is enabled.
-# This may be time consuming for repositories with large .deb's, as each .deb is temporarily
-# extracted to retrieve its changelog.
-SHOW_CHANGELOGS = True
-
-# The directory that changelogs should be written to.
-CHANGELOG_TARGET_DIR = "changelogs"
-
-# Determines the maximum file size (in bytes) for .deb's that this script should read to
-# generate changelogs. Any files larger than this size will be skipped.
-MAX_CHANGELOG_FILE_SIZE = 20971520  # 20 MB
-
-# Determines whether Vcs-Browser links should be shown. This may be time consuming for larger
-# repositories, since a package information call is made to aptly for every package in the repository.
-SHOW_VCS_LINKS = True
-
-# Determines whether package descriptions should be shown as tooltips in the package name field.
-# This may be time consuming for larger repositories, since a package information call is made to aptly
-# for every package in the repository.
-SHOW_DESCRIPTIONS = True
-
-# Determines whether dependencies/recommends/suggests for packages should be shown.
-# This may be time consuming for larger repositories, since a package information call is made to aptly
-# for every package in the repository.
-SHOW_DEPENDENCIES = True
-
-# Determines whether extended package relations (Breaks/Conflicts/Replaces) will be shown.
-# This can be added for completeness but usually isn't of great value to end users.
-# This option requires SHOW_DEPENDENCIES to be enabled.
-SHOW_EXTENDED_RELATIONS = False
-
-# Defines any extra styles / lines to put in <head>.
-# The gstyle.css for packages.o.c can be found at https://git.io/vSKJj for reference
-EXTRA_STYLES = """<link rel="stylesheet" type="text/css" href="gstyle.css">
-<!-- From http://www.kryogenix.org/code/browser/sorttable/ -->
-<script src="sorttable.js"></script>
-"""
-
-### END CONFIGURATION VARIABLES ###
+print('Output directory set to: %s' % OUTDIR)
 
 if SHOW_CHANGELOGS:
     from debian import changelog, debfile
+    if not CHANGELOG_TARGET_DIR:
+        print("Error: SHOW_CHANGELOGS is true but no CHANGELOG_TARGET_DIR set", file=sys.stderr)
+        sys.exit(1)
+    else:
+        print("Changelog directory set to: %s" % CHANGELOG_TARGET_DIR)
 
 if not shutil.which('aptly'):
     print('Error: aptly not found in path!')
     sys.exit(1)
 
-print('Output directory set to: %s' % OUTDIR)
 snapshotlist = subprocess.check_output(("aptly", "snapshot", "list", "-raw")).decode('utf-8').splitlines()
 
 if SHOW_POOL_LINKS or SHOW_CHANGELOGS:
-
-    if SHOW_CHANGELOGS and not CHANGELOG_TARGET_DIR:
-        print("Error: SHOW_CHANGELOGS is true but no CHANGELOG_TARGET_DIR set", file=sys.stderr)
-        sys.exit(1)
-
     import pathlib
     # Enumerate all objects in pool/. XXX: ugly globs......
     poolobjects = collections.defaultdict(set)
