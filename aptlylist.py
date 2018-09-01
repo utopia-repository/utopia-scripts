@@ -241,10 +241,7 @@ def plist(dist):
 </body></html>""".format(len(packagelist), len(unique), time.strftime("%I:%M:%S %p, %b %d %Y +0000", time.gmtime())))
 
 if __name__ == "__main__":
-    try:
-        repolist = [sys.argv[1]]
-    except IndexError:
-        repolist = TARGET_DISTS
+    repolist = sys.argv[1:] or TARGET_DISTS
     print('Got target dists: %s' % repolist)
     for dist in repolist:
         print('Processing package lists for %r.' % dist)
