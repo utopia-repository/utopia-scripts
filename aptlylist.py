@@ -42,9 +42,8 @@ SHOW_POOL_LINKS = True
 # extracted to retrieve its changelog.
 SHOW_CHANGELOGS = True
 
-# Defines a changelog cache directory: generated changelogs will be stored here and reused, instead
-# of regenerating changelogs for versions already known.
-CHANGELOG_CACHE_DIR = "/srv/aptly/changelogcache"
+# The directory that changelogs should be written to.
+CHANGELOG_TARGET_DIR = "changelogs"
 
 # Determines the maximum file size (in bytes) for .deb's that this script should read to
 # generate changelogs. Any files larger than this size will be skipped.
@@ -88,14 +87,19 @@ if not shutil.which('aptly'):
 print('Output directory set to: %s' % OUTDIR)
 snapshotlist = subprocess.check_output(("aptly", "snapshot", "list", "-raw")).decode('utf-8').splitlines()
 
-if SHOW_POOL_LINKS or SHOW_CHANGELOGS:  # Pre-enumerate a list of all objects in pool/
+if SHOW_POOL_LINKS or SHOW_CHANGELOGS:
+
+    if SHOW_CHANGELOGS and not CHANGELOG_TARGET_DIR:
+        print("Error: SHOW_CHANGELOGS is true but no CHANGELOG_TARGET_DIR set", file=sys.stderr)
+        sys.exit(1)
+
     import pathlib
-    # XXX: ugly globs......
+    # Pre-enumerate a list of all objects in pool/. XXX: ugly globs......
     poolobjects = list(pathlib.Path(OUTDIR).glob('pool/*/*/*/*.*'))
 
-    if CHANGELOG_CACHE_DIR and not os.path.exists(CHANGELOG_CACHE_DIR):
-        print("Creating cache dir %s" % CHANGELOG_CACHE_DIR)
-        os.mkdir(CHANGELOG_CACHE_DIR)
+    if not os.path.exists(CHANGELOG_TARGET_DIR):
+        print("Creating changelog dir %s" % CHANGELOG_TARGET_DIR)
+        os.mkdir(CHANGELOG_TARGET_DIR)
 
 DEPENDENCY_TYPES = ['Build-Depends', 'Build-Depends-Indep', 'Depends', 'Enhances', 'Recommends', 'Suggests',
 # Not sure whether Provides and Pre-Depends really belong here, but they're somewhat informative compared to the rest
@@ -220,20 +224,7 @@ def plist(dist):
                             download_link = '<a href="%s">%s</a>' % (location, arch)
                             if SHOW_CHANGELOGS and arch != 'source':  # XXX: there's no easy way to generate changelogs from sources
                                 changelog_path = os.path.splitext(str(location))[0] + '.changelog'
-                                if CHANGELOG_CACHE_DIR:
-                                    cache_path = os.path.join(CHANGELOG_CACHE_DIR, os.path.basename(changelog_path))
-                                    #print("    Caching changelog to %s" % cache_path)
-                                else:
-                                    cache_path = changelog_path
-
-                                if os.path.exists(cache_path) and os.path.getsize(cache_path) == 0:
-                                    # Work around 0-size changelog files that sometimes pop-up - I'm not sure why this happens?
-                                    for path in set((cache_path, changelog_path)):
-                                        print("    Removing invalid 0-size changelog file %s" % path)
-                                        try:
-                                            os.remove(path)
-                                        except OSError:
-                                            pass
+                                changelog_path = os.path.join(CHANGELOG_TARGET_DIR, os.path.basename(changelog_path))
 
                                 if not os.path.exists(changelog_path):
                                     # There's a new changelog file name for every version, so don't repeat generation
@@ -247,30 +238,21 @@ def plist(dist):
                                         print("    Skipping .deb %s; debug packages don't use changelogs" % poolfile.name)
                                         break
 
-                                    if not os.path.exists(cache_path):
-                                        # Cached changelog doesn't exist, so make a new file.
-                                        print("    Reading .deb %s" % full_path)
-                                        deb = debfile.DebFile(full_path)
-                                        changelog = deb.changelog()
-                                        if changelog:
-                                            with open(cache_path, 'w') as changes_f:
-                                                print("    Writing changelog for %s (%s) to %s" % (fullname, filename, changelog_path))
-                                                try:
-                                                    changelog.write_to_open_file(changes_f)
-                                                except ValueError:  # Something went wrong, bleh.
-                                                    traceback.print_exc()
-                                                    continue
-                                        else:
-                                            print("    Changelog generation FAILED for %s (deb.changelog() is empty?)" % fullname)
-                                            continue
-
-                                    if changelog_path != cache_path:
-                                        print("    Linking cached changelog %s to %s" % (cache_path, changelog_path))
-                                        try:
-                                            os.link(cache_path, changelog_path)
-                                        except OSError:
-                                            traceback.print_exc()
-                                            continue
+                                    # Cached changelog doesn't exist, so make a new file.
+                                    print("    Reading .deb %s" % full_path)
+                                    deb = debfile.DebFile(full_path)
+                                    changelog = deb.changelog()
+                                    if changelog:
+                                        with open(changelog_path, 'w') as changes_f:
+                                            print("    Writing changelog for %s (%s) to %s" % (fullname, filename, changelog_path))
+                                            try:
+                                                changelog.write_to_open_file(changes_f)
+                                            except ValueError:  # Something went wrong, bleh.
+                                                traceback.print_exc()
+                                                continue
+                                    else:
+                                        print("    Changelog generation FAILED for %s (deb.changelog() is empty?)" % fullname)
+                                        continue
 
                             #print("Found %s for %s" % (poolfile, fullname))
                             break
@@ -287,7 +269,7 @@ def plist(dist):
                 if SHOW_CHANGELOGS:
                     # Only fill in the changelog column if it is enabled, and the changelog exists.
                     if changelog_path and os.path.exists(changelog_path):
-                        f.write("""<td><a href="{}">Changelog</a></td>""".format(changelog_path))
+                        f.write("""<td><a href="{}">Changelog</a></td>""".format(os.path.relpath(changelog_path, OUTDIR)))
                     else:
                         f.write("""<td>N/A</td>""")
                 if SHOW_VCS_LINKS:
