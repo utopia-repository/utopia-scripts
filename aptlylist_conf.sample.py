@@ -19,10 +19,9 @@ SNAPSHOT_REGEX = r'^%s-\d{4}-\d{2}-\d{2}'  # First %s is the distribution name
 # time consuming for larger repositories, because the script will index the entirety of pool/.
 SHOW_POOL_LINKS = True
 
-# Determines whether changelogs should be shown generated, using the format of synaptic
-# (i.e. PACKAGENAME_VERSION_ARCH.changelog).
-# This option requires the python3-debian module, and implies that 'SHOW_POOL_LINKS' is enabled.
-# This may be time consuming for repositories with large .deb's, as each .deb is temporarily
+# Determines whether changelogs should be shown generated. This option requires the python3-debian
+# module, and implies SHOW_POOL_LINKS.
+# This may be time consuming for repositories with lots of .deb's, as each .deb is temporarily
 # extracted to retrieve its changelog.
 SHOW_CHANGELOGS = True
 
@@ -34,11 +33,11 @@ CHANGELOG_TARGET_DIR = os.path.join(OUTDIR, "changelogs")
 MAX_CHANGELOG_FILE_SIZE = 20971520  # 20 MB
 
 # Determines whether Vcs-Browser links should be shown. This may be time consuming for larger
-# repositories, since a package information call is made to aptly for every package in the repository.
+# repositories, since a subprocess call is made to aptly for every package in the repository.
 SHOW_VCS_LINKS = True
 
 # Determines whether package descriptions should be shown as tooltips in the package name field.
-# This may be time consuming for larger repositories, since a package information call is made to aptly
+# This may be time consuming for larger repositories, since a subprocess call is made to aptly
 # for every package in the repository.
 SHOW_DESCRIPTIONS = True
 
