@@ -13,7 +13,7 @@ TARGET_DISTS = ["sid", "sid-imports", "sid-forks", "experimental",
 
 # REGEX to look for snapshots for the distribution we're looking up. Defaults to ${dist}-YYYY-MM-DD.
 # If this regex doesn't match a certain distribution, it is treated as its own repository in lookup.
-SNAPSHOT_REGEX_BASE = r'^%s-\d{4}-\d{2}-\d{2}'  # First %s is the distribution name
+SNAPSHOT_REGEX = r'^%s-\d{4}-\d{2}-\d{2}'  # First %s is the distribution name
 
 # Determines whether we should experimentally create pool/ links to each package entry. This may be
 # time consuming for larger repositories, because the script will index the entirety of pool/.
