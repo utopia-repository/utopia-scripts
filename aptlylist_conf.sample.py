@@ -52,8 +52,8 @@ SHOW_DEPENDENCIES = True
 # This option requires SHOW_DEPENDENCIES to be enabled.
 SHOW_EXTENDED_RELATIONS = False
 
-# Defines any extra styles / lines to put in <head>.
-# The gstyle.css for packages.o.c can be found at https://git.io/vSKJj for reference
+# Defines any CSS, code, etc. to put in <head>.
+# The resources for my site are over at https://git.overdrivenetworks.com/james/ureposite
 EXTRA_STYLES = """<link rel="stylesheet" type="text/css" href="gstyle.css">
 <!-- From http://www.kryogenix.org/code/browser/sorttable/ -->
 <script src="sorttable.js"></script>
