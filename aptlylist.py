@@ -62,13 +62,13 @@ if SHOW_EXTENDED_RELATIONS:
     DEPENDENCY_TYPES += ["Conflicts", "Breaks", "Replaces", "Build-Conflicts",
                          "Build-Conflicts-Indep", "Built-Using"]
 
-SNAPSHOT_REGEX = re.compile(SNAPSHOT_REGEX)
 def plist(dist):
     packagelist = []
     unique = set()
+    snapshotregex = re.compile(SNAPSHOT_REGEX_BASE % dist)
     try:
         try:  # Try to find a snapshot matching the distribution
-            snapshotname = [s for s in snapshotlist if SNAPSHOT_REGEX.search(s)][-1]
+            snapshotname = [s for s in snapshotlist if snapshotregex.search(s)][-1]
         except IndexError:  # If that fails, just treat it as a repo
             print('Using packages in repo %r...' % dist)
             packages_raw = subprocess.check_output(("aptly", "repo", "show", "-with-packages", dist)).splitlines()
