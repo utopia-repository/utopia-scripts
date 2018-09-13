@@ -167,7 +167,7 @@ def plist(dist):
                     # Then, once we've found the filename, look it up in the pool/ tree we made
                     # earlier.
                     #print("Found filename %s for %s" % (filename, fullname))
-                    for poolfile in poolobjects.get(name):
+                    for poolfile in poolobjects[name]:
                         if poolfile.name == filename:
                             # Filename matched found, make the "arch" field a relative link to the path given.
                             location = poolfile.relative_to(OUTDIR)
