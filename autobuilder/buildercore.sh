@@ -67,7 +67,7 @@ build_git () {
 	git checkout debian/changelog
 	autogit pull --no-edit  # Merge the packaging branch's changes too
 
-	VERSIONFILE=".utopiaab_last_version_${BUILD_DIST}"
+	VERSIONFILE="debian/.utopiaab_last_version_${BUILD_DIST}"
 
 	LASTVERSION="$(cat $VERSIONFILE)"
 	if [[ "$DEBVERSION" == "$LASTVERSION" && "$UTOPIAAB_FORCE_REBUILD" != true ]]; then
