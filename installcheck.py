@@ -10,9 +10,10 @@ from __future__ import print_function
 
 # A list of known repositories.
 REPOS = {'debian': 'http://httpredir.debian.org/debian',
-         'urepo': 'https://packages.overdrivenetworks.com',
-         'urepo-test-ubuntu-stable': 'https://packages.overdrivenetworks.com',
-         'urepo-test-ubuntu-devel': 'https://packages.overdrivenetworks.com',
+         'urepo': 'https://deb.utopia-repository.org',
+         'urepo-nightlies': 'https://ni.deb.utopia-repository.org',
+         'urepo-test-ubuntu-stable': 'https://deb.utopia-repository.org',
+         'urepo-test-ubuntu-devel': 'https://deb.utopia-repository.org',
          'ubuntu': 'http://archive.ubuntu.com/ubuntu'}
 
 # A list of architectures to test against.
@@ -27,8 +28,8 @@ TARGET_DISTS = {
                                   ('urepo', 'sid', 'main')],
     ('urepo', 'sid', 'forks'): [('debian', 'sid', 'main'),
                                 ('urepo', 'sid', 'main')],
-    ('urepo', 'sid-nightlies', 'main'): [('debian', 'sid', 'main'),
-                                         ('urepo', 'sid', 'main')],
+    ('urepo-nightlies', 'sid-nightlies', 'main'): [('debian', 'sid', 'main'),
+                                                   ('urepo', 'sid', 'main')],
 
     ('urepo', 'stretch', 'main'): [('debian', 'stretch', 'main'),
                                    ('debian', 'stretch-backports', 'main'),
