@@ -24,7 +24,7 @@ FILENAME = 'aptly-snapshots.list'
 OUTDIR = '/srv/aptly/public/sndiff'
 
 # FIFO pipe to announce to
-ANNOUNCE_DEST = os.path.expanduser('~/ii/irc.overdrivenetworks.com/#dev/in')
+ANNOUNCE_DEST = os.path.expanduser('~/ii/localhost/#dev/in')
 
 # Formats the text when using FIFO announce
 # 0 = target dist, 1 = old snapshot, 2 = new snapshot, 3 = snapshot diff filename
