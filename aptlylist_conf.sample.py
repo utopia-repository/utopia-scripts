@@ -11,8 +11,8 @@ TARGET_DISTS = ["sid", "sid-imports", "sid-forks", "experimental",
                 "bionic", "bionic-imports", "bionic-forks",
                 "xenial"]
 
-# A list of repositories to show uscan information on. This requires extracting every source package, so
-# it may be slow on large repositories.
+# A list of repositories to show uscan information on. This requires extracting every (non-native)
+# source package on run, and may be slow on large repositories. Leave this list empty to disable uscan updates.
 USCAN_DISTS = ['sid', 'sid-imports', 'sid-forks', 'experimental']
 
 # REGEX to look for snapshots for the distribution we're looking up. Defaults to ${dist}-YYYY-MM-DD.
@@ -23,11 +23,16 @@ SNAPSHOT_REGEX_BASE = r'^%s-\d{4}-\d{2}-\d{2}'  # First %s is the distribution n
 # time consuming for larger repositories, because the script will index the entirety of pool/.
 SHOW_POOL_LINKS = True
 
-# Determines whether changelogs should be shown generated. This option requires the python3-debian
+# Determines whether changelogs should be generated. This option requires the python3-debian
 # module, and implies SHOW_POOL_LINKS.
 # This may be time consuming for repositories with lots of .deb's, as each .deb is temporarily
 # extracted to retrieve its changelog.
 SHOW_CHANGELOGS = True
+
+# Determines whether changelogs should be shown generated from source packages. This option
+# requires the SHOW_CHANGELOGS option to be enabled.
+# Enabling this requires extracting every source package on run, and may be slow on large repositories.
+SHOW_SOURCE_CHANGELOGS = False
 
 # The directory that changelogs should be written to.
 CHANGELOG_TARGET_DIR = os.path.join(OUTDIR, "changelogs")

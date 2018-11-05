@@ -90,7 +90,8 @@ def _export_sourcepkg_data(pkgname, version, tarball, changelog_path=None, get_u
     """
 
     is_native = '.debian.' not in tarball
-    if (is_native or not get_uscan) and os.path.exists(changelog_path):
+    if (is_native or not get_uscan) and \
+            (os.path.exists(changelog_path) or not SHOW_SOURCE_CHANGELOGS or not SHOW_CHANGELOGS):
         # We don't need any new info, so don't bother opening the tarball.
         return
     elif os.path.getsize(tarball) > MAX_CHANGELOG_FILE_SIZE:
@@ -124,6 +125,7 @@ def _export_sourcepkg_data(pkgname, version, tarball, changelog_path=None, get_u
                 if watchfile is None:
                     return
 
+                print("    Checking uscan on package %s_%s" % (pkgname, version))
                 proc = subprocess.Popen([
                     'uscan', '--dehs',
                     '--package', pkgname,
@@ -307,9 +309,9 @@ def plist(dist):
 
                         # If we get a source package, check every file corresponding to the package
                         # and extract the tar.(gz|bz2|xz) or debian.tar.(gz|bz2|xz).
-                        elif arch == 'source' and (SHOW_CHANGELOGS or get_uscan):
+                        elif arch == 'source' and (SHOW_SOURCE_CHANGELOGS or get_uscan):
                             if poolfile.name.endswith(('.tar.gz', '.tar.bz2', '.tar.xz')) and '.orig.' not in poolfile.name:
-                                print("    Got tarball %s for package %s" % (poolfile.name, fullname))
+                                #print("    Got tarball %s for package %s" % (poolfile.name, fullname))
                                 # Only extract if we need uscan data or changelog info doesn't exist
                                 if get_uscan or not os.path.exists(changelog_path):
                                     uscan_info = _export_sourcepkg_data(name, version, str(poolfile.resolve()),
