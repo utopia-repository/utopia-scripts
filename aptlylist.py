@@ -39,7 +39,7 @@ if not shutil.which('aptly'):
     print('Error: aptly not found in path!')
     sys.exit(1)
 elif USCAN_DISTS and not shutil.which('uscan'):
-    print('Error: USCAN_DISTS enabled and uscan not found in path!')
+    print('Error: USCAN_DISTS enabled but uscan not found in path!')
     sys.exit(1)
 
 snapshotlist = subprocess.check_output(("aptly", "snapshot", "list", "-raw")).decode('utf-8').splitlines()
@@ -70,21 +70,29 @@ if SHOW_EXTENDED_RELATIONS:
 
 def _parse_dehs(data):
     """
-    Parses dehs data from uscan and returns a tuple if successful: (status, upstream version)
+    Parses dehs data from uscan and returns a tuple if successful:
+        (status, upstream version, upstream url)
     """
     root = xml.etree.ElementTree.fromstring(data)
     status = root.find('status').text
     upstream_ver = root.find('upstream-version').text
-    print("Got uscan data %r, %r" % (status, upstream_ver))
-    return (status, upstream_ver)
+    upstream_url = root.find('upstream-url').text
+    print("Got uscan data %r, %r, %r" % (status, upstream_ver, upstream_url))
+    return (status, upstream_ver, upstream_url)
 
 def _export_sourcepkg_data(pkgname, version, tarball, changelog_path=None, get_uscan=True):
     """
     Exports data from a Debian source package tarball.
 
     If changelog_path is given, extracts debian/changelog to changelog_path.
-    If get_uscan is True, returns uscan data in a tuple: (status, upstream version)
+    If get_uscan is True, returns uscan data in a tuple:
+        (status, upstream version, upstream url)
     """
+    if os.path.getsize(tarball) > MAX_CHANGELOG_FILE_SIZE:
+        print("    Skipping tarball %s; file size too large" % tarball)
+        return
+
+    is_native = '.debian.' not in tarball
     uversion = version
     uversion = uversion.split(':', 1)[-1]  # Remove epoch
     uversion = uversion.rsplit('-', 1)[0]  # Remove debian revision
@@ -104,7 +112,7 @@ def _export_sourcepkg_data(pkgname, version, tarball, changelog_path=None, get_u
                     with open(changelog_path, 'wb') as changelog_outf:
                         changelog_outf.write(changelog)
 
-            if get_uscan:
+            if get_uscan and not is_native:
                 try:
                     watchfile = tar_f.extractfile("debian/watch")
                 except KeyError:
@@ -116,7 +124,7 @@ def _export_sourcepkg_data(pkgname, version, tarball, changelog_path=None, get_u
                     'uscan', '--dehs',
                     '--package', pkgname,
                     '--upstream-version', uversion,
-                    '--verbose',
+                    #'--verbose',
                     '--watchfile', '-'],
                     stdin=subprocess.PIPE, stdout=subprocess.PIPE)
                 uscan_dehs, _ = proc.communicate(watchfile.read())
@@ -132,6 +140,13 @@ def _export_sourcepkg_data(pkgname, version, tarball, changelog_path=None, get_u
         print("    Failed to extract tarball %s" % poolfile.name)
         traceback.print_exc()
     return None
+
+_USCAN_FORMAT = {
+    "newer package available": "💡",
+    "only older package available": "⁉️",
+    "up to date": "✔️",
+    "failed to get status": "❌",
+}
 
 def plist(dist):
     packagelist = []
@@ -212,7 +227,10 @@ def plist(dist):
                 changelog_path = ''
                 vcs_link = ''
                 relations = collections.OrderedDict()
+
                 uscan_info = None
+                debian_tar = None
+                dsc = None
 
                 for line in poolresults.splitlines():
                     line = line.decode('utf-8')
@@ -293,6 +311,7 @@ def plist(dist):
                                 if get_uscan or not os.path.exists(changelog_path):
                                     uscan_info = _export_sourcepkg_data(name, version, str(poolfile.resolve()),
                                         changelog_path=changelog_path, get_uscan=get_uscan)
+                                break
 
                 name_extended = name
                 if short_desc and SHOW_DESCRIPTIONS:
@@ -304,27 +323,37 @@ def plist(dist):
 <td>{1}</td>
 <td>{2}</td>
 """.format(name, version, download_link, html.escape(arch), name_extended)))
+
+                _write_na = lambda: f.write("""<td class="not-available">N/A</td>""")
+
                 if SHOW_CHANGELOGS:
                     # Only fill in the changelog column if it is enabled, and the changelog exists.
                     if changelog_path and os.path.exists(changelog_path):
                         f.write("""<td><a href="{}">Changelog</a></td>""".format(os.path.relpath(changelog_path, OUTDIR)))
                     else:
-                        f.write("""<td>N/A</td>""")
+                        _write_na()
                 if SHOW_VCS_LINKS:
                     if vcs_link:
                         f.write("""<td><a href="{0}">{0}</a>""".format(vcs_link))
                     else:
-                        f.write("""<td>N/A</td>""")
+                        _write_na()
                 if SHOW_DEPENDENCIES:
                     text = ''
                     for depname, data in relations.items():
                         text += """<span class="dependency deptype-{2}">{0}</span>: {1}<br>""".format(depname, data, depname.lower())
                     f.write("""<td>{}</td>""".format(text))
                 if get_uscan:
+                    print("    uscan_info for %s: %s" % (fullname, uscan_info))
                     if uscan_info is None:
-                        f.write("""<td>N/A</td>""")
+                        _write_na()
                     else:  # expand the status, version pair
-                        f.write("""<td>{0}<br>{1}</td>""".format(*uscan_info))
+                        status, upstream, url = uscan_info
+                        # Prettify uscan format when applicable
+                        for s in _USCAN_FORMAT:
+                            if s in status:
+                                status = """<span title="{0}" style="cursor: pointer">{1}</span>""".format(status, _USCAN_FORMAT[s])
+                                break
+                        f.write("""<td>{0} <a href="{2}">{1}</a></td>""".format(status, upstream, url))
 
                 f.write("""
 </tr>
