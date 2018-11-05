@@ -11,6 +11,10 @@ TARGET_DISTS = ["sid", "sid-imports", "sid-forks", "experimental",
                 "bionic", "bionic-imports", "bionic-forks",
                 "xenial"]
 
+# A list of repositories to show uscan information on. This requires extracting every source package, so
+# it may be slow on large repositories.
+USCAN_DISTS = ['sid', 'sid-imports', 'sid-forks', 'experimental']
+
 # REGEX to look for snapshots for the distribution we're looking up. Defaults to ${dist}-YYYY-MM-DD.
 # If this regex doesn't match a certain distribution, it is treated as its own repository in lookup.
 SNAPSHOT_REGEX_BASE = r'^%s-\d{4}-\d{2}-\d{2}'  # First %s is the distribution name
@@ -50,10 +54,6 @@ SHOW_DEPENDENCIES = True
 # This can be added for completeness but usually isn't of great value to end users.
 # This option requires SHOW_DEPENDENCIES to be enabled.
 SHOW_EXTENDED_RELATIONS = False
-
-# A list of repositories to show uscan information on. This requires extracting every source package, so
-# it may be slow on large repositories.
-USCAN_DISTS = ['sid', 'sid-imports']
 
 # Defines any CSS, code, etc. to put in <head>.
 # The resources for my site are over at https://git.overdrivenetworks.com/james/ureposite

@@ -88,18 +88,22 @@ def _export_sourcepkg_data(pkgname, version, tarball, changelog_path=None, get_u
     If get_uscan is True, returns uscan data in a tuple:
         (status, upstream version, upstream url)
     """
-    if os.path.getsize(tarball) > MAX_CHANGELOG_FILE_SIZE:
+
+    is_native = '.debian.' not in tarball
+    if (is_native or not get_uscan) and os.path.exists(changelog_path):
+        # We don't need any new info, so don't bother opening the tarball.
+        return
+    elif os.path.getsize(tarball) > MAX_CHANGELOG_FILE_SIZE:
         print("    Skipping tarball %s; file size too large" % tarball)
         return
 
-    is_native = '.debian.' not in tarball
     uversion = version
     uversion = uversion.split(':', 1)[-1]  # Remove epoch
     uversion = uversion.rsplit('-', 1)[0]  # Remove debian revision
     uscan_output = None
     try:
         with tarfile.open(tarball, 'r') as tar_f:
-            if changelog_path:
+            if changelog_path and not os.path.exists(changelog_path):
                 try:
                     changelog_f = tar_f.extractfile("debian/changelog")
                 except KeyError:
@@ -300,7 +304,6 @@ def plist(dist):
                                         continue
 
                             #print("Found %s for %s" % (poolfile, fullname))
-                            break
 
                         # If we get a source package, check every file corresponding to the package
                         # and extract the tar.(gz|bz2|xz) or debian.tar.(gz|bz2|xz).
@@ -311,7 +314,6 @@ def plist(dist):
                                 if get_uscan or not os.path.exists(changelog_path):
                                     uscan_info = _export_sourcepkg_data(name, version, str(poolfile.resolve()),
                                         changelog_path=changelog_path, get_uscan=get_uscan)
-                                break
 
                 name_extended = name
                 if short_desc and SHOW_DESCRIPTIONS:
@@ -343,7 +345,7 @@ def plist(dist):
                         text += """<span class="dependency deptype-{2}">{0}</span>: {1}<br>""".format(depname, data, depname.lower())
                     f.write("""<td>{}</td>""".format(text))
                 if get_uscan:
-                    print("    uscan_info for %s: %s" % (fullname, uscan_info))
+                    #print("    uscan_info for %s: %s" % (fullname, uscan_info))
                     if uscan_info is None:
                         _write_na()
                     else:  # expand the status, version pair
