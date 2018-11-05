@@ -173,8 +173,7 @@ def plist(dist):
                             location = poolfile.relative_to(OUTDIR)
                             download_link = '<a href="%s">%s</a>' % (location, arch)
                             if SHOW_CHANGELOGS and arch != 'source':  # XXX: there's no easy way to generate changelogs from sources
-                                changelog_path = os.path.splitext(str(location))[0] + '.changelog'
-                                changelog_path = os.path.join(CHANGELOG_TARGET_DIR, os.path.basename(changelog_path))
+                                changelog_path = os.path.join(CHANGELOG_TARGET_DIR, '%s_%s.changelog' % (name, version))
 
                                 if not os.path.exists(changelog_path):
                                     # There's a new changelog file name for every version, so don't repeat generation
