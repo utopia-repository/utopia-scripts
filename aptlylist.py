@@ -14,6 +14,9 @@ import re
 import traceback
 import collections
 import html
+import tarfile
+import io
+import xml.etree.ElementTree
 
 try:
     from aptlylist_conf import *
@@ -35,6 +38,9 @@ if SHOW_CHANGELOGS:
 if not shutil.which('aptly'):
     print('Error: aptly not found in path!')
     sys.exit(1)
+elif USCAN_DISTS and not shutil.which('uscan'):
+    print('Error: USCAN_DISTS enabled and uscan not found in path!')
+    sys.exit(1)
 
 snapshotlist = subprocess.check_output(("aptly", "snapshot", "list", "-raw")).decode('utf-8').splitlines()
 
@@ -42,7 +48,7 @@ if SHOW_POOL_LINKS or SHOW_CHANGELOGS:
     import pathlib
     # Enumerate all objects in pool/. XXX: ugly globs......
     poolobjects = collections.defaultdict(set)
-    for repofile in pathlib.Path(OUTDIR).glob('pool/*/*/*/*.d??'):
+    for repofile in pathlib.Path(OUTDIR).glob('pool/*/*/*/*.*'):
         # Store packages by name, not by name+version because epochs are not written into the filename!
         pkgname = repofile.name.split('_')[0]
         poolobjects[pkgname].add(repofile)
@@ -62,10 +68,76 @@ if SHOW_EXTENDED_RELATIONS:
     DEPENDENCY_TYPES += ["Conflicts", "Breaks", "Replaces", "Build-Conflicts",
                          "Build-Conflicts-Indep", "Built-Using"]
 
+def _parse_dehs(data):
+    """
+    Parses dehs data from uscan and returns a tuple if successful: (status, upstream version)
+    """
+    root = xml.etree.ElementTree.fromstring(data)
+    status = root.find('status').text
+    upstream_ver = root.find('upstream-version').text
+    print("Got uscan data %r, %r" % (status, upstream_ver))
+    return (status, upstream_ver)
+
+def _export_sourcepkg_data(pkgname, version, tarball, changelog_path=None, get_uscan=True):
+    """
+    Exports data from a Debian source package tarball.
+
+    If changelog_path is given, extracts debian/changelog to changelog_path.
+    If get_uscan is True, returns uscan data in a tuple: (status, upstream version)
+    """
+    uversion = version
+    uversion = uversion.split(':', 1)[-1]  # Remove epoch
+    uversion = uversion.rsplit('-', 1)[0]  # Remove debian revision
+    uscan_output = None
+    try:
+        with tarfile.open(tarball, 'r') as tar_f:
+            if changelog_path:
+                try:
+                    changelog_f = tar_f.extractfile("debian/changelog")
+                except KeyError:
+                    print('    ERROR: No debian/changelog in tarball %s' % tarball)
+                    return  # Stop here, watchfile extraction is probably dead too.
+                else:
+                    print("    Writing changelog from package %s to %s" % (tarball, changelog_path))
+                    changelog = changelog_f.read()
+                    changelog_f.close()
+                    with open(changelog_path, 'wb') as changelog_outf:
+                        changelog_outf.write(changelog)
+
+            if get_uscan:
+                try:
+                    watchfile = tar_f.extractfile("debian/watch")
+                except KeyError:
+                    return
+                if watchfile is None:
+                    return
+
+                proc = subprocess.Popen([
+                    'uscan', '--dehs',
+                    '--package', pkgname,
+                    '--upstream-version', uversion,
+                    '--verbose',
+                    '--watchfile', '-'],
+                    stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+                uscan_dehs, _ = proc.communicate(watchfile.read())
+                watchfile.close()
+
+                try:
+                    return _parse_dehs(uscan_dehs.decode('utf-8'))
+                except:
+                    print("    Failed to get uscan info:")
+                    traceback.print_exc()
+
+    except (tarfile.TarError, OSError):
+        print("    Failed to extract tarball %s" % poolfile.name)
+        traceback.print_exc()
+    return None
+
 def plist(dist):
     packagelist = []
     unique = set()
     snapshotregex = re.compile(SNAPSHOT_REGEX_BASE % dist)
+    get_uscan = dist in USCAN_DISTS
     try:
         try:  # Try to find a snapshot matching the distribution
             snapshotname = [s for s in snapshotlist if snapshotregex.search(s)][-1]
@@ -118,6 +190,8 @@ def plist(dist):
             f.write("""<th>Vcs-Browser</th>""")
         if SHOW_DEPENDENCIES:
             f.write("""<th>Package Relations</th>""")
+        if get_uscan:
+            f.write("""<th>uscan Info</th>""")
         f.write("""
 </tr>
 """)
@@ -138,6 +212,7 @@ def plist(dist):
                 changelog_path = ''
                 vcs_link = ''
                 relations = collections.OrderedDict()
+                uscan_info = None
 
                 for line in poolresults.splitlines():
                     line = line.decode('utf-8')
@@ -163,19 +238,21 @@ def plist(dist):
                         if line.startswith(deptype + ':'):
                             relations[deptype] = line.split(' ', 1)[-1]
 
-                if filename and (SHOW_POOL_LINKS or SHOW_CHANGELOGS):
+                if filename and (SHOW_POOL_LINKS or SHOW_CHANGELOGS or get_uscan):
                     # Then, once we've found the filename, look it up in the pool/ tree we made
                     # earlier.
                     #print("Found filename %s for %s" % (filename, fullname))
+
+                    # Each package entry gets a unique changelog path based on its name & version
+                    changelog_path = os.path.join(CHANGELOG_TARGET_DIR, '%s_%s.changelog' % (name, version))
+
                     for poolfile in poolobjects[name]:
+                        location = poolfile.relative_to(OUTDIR)
+
                         if poolfile.name == filename:
                             # Filename matched found, make the "arch" field a relative link to the path given.
-                            location = poolfile.relative_to(OUTDIR)
                             download_link = '<a href="%s">%s</a>' % (location, arch)
-                            if SHOW_CHANGELOGS and arch != 'source':  # XXX: there's no easy way to generate changelogs from sources
-                                changelog_path = os.path.splitext(str(location))[0] + '.changelog'
-                                changelog_path = os.path.join(CHANGELOG_TARGET_DIR, os.path.basename(changelog_path))
-
+                            if SHOW_CHANGELOGS and arch != 'source':
                                 if not os.path.exists(changelog_path):
                                     # There's a new changelog file name for every version, so don't repeat generation
                                     # for versions that already have a changelog.
@@ -206,6 +283,17 @@ def plist(dist):
 
                             #print("Found %s for %s" % (poolfile, fullname))
                             break
+
+                        # If we get a source package, check every file corresponding to the package
+                        # and extract the tar.(gz|bz2|xz) or debian.tar.(gz|bz2|xz).
+                        elif arch == 'source' and (SHOW_CHANGELOGS or get_uscan):
+                            if poolfile.name.endswith(('.tar.gz', '.tar.bz2', '.tar.xz')) and '.orig.' not in poolfile.name:
+                                print("    Got tarball %s for package %s" % (poolfile.name, fullname))
+                                # Only extract if we need uscan data or changelog info doesn't exist
+                                if get_uscan or not os.path.exists(changelog_path):
+                                    uscan_info = _export_sourcepkg_data(name, version, str(poolfile.resolve()),
+                                        changelog_path=changelog_path, get_uscan=get_uscan)
+
                 name_extended = name
                 if short_desc and SHOW_DESCRIPTIONS:
                     # Format the name in a tooltip span if a description is available.
@@ -232,6 +320,12 @@ def plist(dist):
                     for depname, data in relations.items():
                         text += """<span class="dependency deptype-{2}">{0}</span>: {1}<br>""".format(depname, data, depname.lower())
                     f.write("""<td>{}</td>""".format(text))
+                if get_uscan:
+                    if uscan_info is None:
+                        f.write("""<td>N/A</td>""")
+                    else:  # expand the status, version pair
+                        f.write("""<td>{0}<br>{1}</td>""".format(*uscan_info))
+
                 f.write("""
 </tr>
 """)

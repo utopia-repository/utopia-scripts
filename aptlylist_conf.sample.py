@@ -51,6 +51,10 @@ SHOW_DEPENDENCIES = True
 # This option requires SHOW_DEPENDENCIES to be enabled.
 SHOW_EXTENDED_RELATIONS = False
 
+# A list of repositories to show uscan information on. This requires extracting every source package, so
+# it may be slow on large repositories.
+USCAN_DISTS = ['sid', 'sid-imports']
+
 # Defines any CSS, code, etc. to put in <head>.
 # The resources for my site are over at https://git.overdrivenetworks.com/james/ureposite
 EXTRA_STYLES = """<link rel="stylesheet" type="text/css" href="gstyle.css">
