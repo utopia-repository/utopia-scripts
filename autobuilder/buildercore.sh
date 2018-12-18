@@ -5,7 +5,9 @@
 CURDIR=$(dirname "$(readlink -f "$0")")
 
 announce_info () {
-	echo "[${PACKAGE}] $*" | tee "${ANNOUNCE_FIFO_TARGET}"
+	# TODO: rewrite using something like irker
+	#echo "[${PACKAGE}] $*" | tee "${ANNOUNCE_FIFO_TARGET}"
+	true
 }
 
 echo "Using OUTPUT_DIR $OUTPUT_DIR"
@@ -71,7 +73,7 @@ build_git () {
 
 	LASTVERSION="$(cat $VERSIONFILE)"
 	if [[ "$DEBVERSION" == "$LASTVERSION" && "$UTOPIAAB_FORCE_REBUILD" != true ]]; then
-		echo "[${PACKAGE}] Skipping build (new version $DEBVERSION would be the same as what we have)" | tee "${ANNOUNCE_FIFO_TARGET}"
+		echo "[${PACKAGE}] Skipping build (new version $DEBVERSION would be the same as what we have)"
 		popd; return
 	fi
 
