@@ -22,8 +22,8 @@ BUILD_DIST="unstable"
 # GPG key to sign packages with
 GPG_KEY="EEBB01E6"
 
-# FIFO target (e.g. via ii to IRC) to announce to after the build is finished
-ANNOUNCE_FIFO_TARGET="${HOME}/ii/irc.overdrivenetworks.com/#dev/in"
+# irker target
+ANNOUNCE_IRKER_TARGET="irc://localhost:16667/dev"
 
 # Determines whether we should force rebuild existing builds
 FORCE_SAME_BUILD=false
