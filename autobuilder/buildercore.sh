@@ -27,7 +27,7 @@ build_and_import () {
 			&& aptly repo remove "$TARGET_DIST" "\$Source ($PACKAGE) | $PACKAGE"
 		aptly repo add "$TARGET_DIST" "$PKGDIR"/*.deb "$PKGDIR"/*.dsc
 		if [[ $? -eq 0 ]]; then
-			announce_info "New files for ${TARGET_DIST}: " "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"/*.deb "${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"/*.dsc
+			announce_info "New build for ${TARGET_DIST}: ${PACKAGE}_${DEBVERSION}"
 		else
 			announce_info "Failed to add files for this package, check the logs for details."
 		fi
