@@ -4,11 +4,11 @@
 GITBUILDER_UPSTREAM_REMOTE="upstream"
 
 # Suffix to replace the Debian package revision with
-VERSION_SUFFIX="-0utopia0~autobuild"
+VERSION_SUFFIX="-0utopia0~auto"
 
 # Name and email used for dch and merge commits
 NAME="Utopia Repository Auto-builder"
-EMAIL="webmaster@overdrivenetworks.com"
+EMAIL="packages-admin@overdrivenetworks.com"
 
 # Note: no trailing / for OUTPUT_DIR
 OUTPUT_DIR="$(mktemp -d /tmp/utopiaab.XXXXXXXXXX)" || (echo "Failed to create OUTPUT_DIR" && exit 1)
