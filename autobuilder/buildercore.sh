@@ -6,6 +6,7 @@ CURDIR=$(dirname "$(readlink -f "$0")")
 
 announce_info () {
 	text="[${PACKAGE}] $*"
+	echo "$text"
 	irk "$ANNOUNCE_IRKER_TARGET" "$text"
 }
 
@@ -71,8 +72,12 @@ build_git () {
 	VERSIONFILE="debian/.utopiaab_last_version_${BUILD_DIST}"
 
 	LASTVERSION="$(cat $VERSIONFILE)"
-	if [[ "$DEBVERSION" == "$LASTVERSION" && "$UTOPIAAB_FORCE_REBUILD" != true ]]; then
-		announce_info "Skipping build (new version $DEBVERSION would be the same as what we have)"
+
+	echo "[$PACKAGE] Checking if package version $DEBVERSION <= $LASTVERSION"
+	# Grab exit code from dpkg comparison
+	dpkg --compare-versions "$DEBVERSION" '<=' "$LASTVERSION"
+	if [[ $? == 0 && "$UTOPIAAB_FORCE_REBUILD" != true ]]; then
+		announce_info "Skipping build (new version $DEBVERSION is <= what we have)"
 		popd; return
 	fi
 
