@@ -94,6 +94,9 @@ def plist(dist):
     packagelist.sort(key=lambda k: k[0])
 
     os.chdir(OUTDIR)
+    with open('%s_sources.txt' % dist, 'w') as sources_f:
+        sources_f.write('\n'.join(sorted(unique)))
+
     with open('%s_list.html' % dist, 'w') as f:
         f.write("""<!DOCTYPE HTML>
 <html>
