@@ -55,6 +55,7 @@ TARGET_DISTS = {
                                       ('ubuntu', 'bionic', 'multiverse'),
                                       ('urepo', 'bionic', 'main')],
     ('urepo', 'bionic', 'forks'): [('ubuntu', 'bionic', 'main'),
+                                   ('ubuntu', 'bionic', 'universe'),
                                    ('urepo', 'bionic', 'main')],
     #('urepo-test-ubuntu-stable', 'sid', 'main'): [('ubuntu', 'bionic', 'main'),
     #                                              ('ubuntu', 'bionic', 'universe')],
