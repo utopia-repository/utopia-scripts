@@ -1,7 +1,17 @@
 #!/bin/bash
+# Runs 'aptly include' on every subdir of an incoming root directory,
+# where each subdir contains packages for a repo of the same name.
 
-# Eventually we'll transition from sid to unstable...
-aptly repo include -uploaders-file="/srv/aptly/urepo-uploaders.json" \
-	-repo='{{if eq .Distribution "unstable"}}sid{{else}}{{.Distribution}}{{end}}' \
-	-keyring="$HOME/.gnupg/pubring.gpg" \
-    "$@" "/srv/aptly/incoming"
+UPLOADERS_FILE="/srv/aptly/urepo-uploaders.json"
+INCOMING_ROOT="/srv/aptly/incoming"
+
+#set -x
+
+for dir in "${INCOMING_ROOT}/"*/; do
+	dist="$(basename "$dir")"
+	echo "Processing dist $dist from directory $dir ..."
+	aptly repo include -uploaders-file="$UPLOADERS_FILE" \
+		-keyring="$HOME/.gnupg/pubring.gpg" \
+		-repo="$dist" \
+		"$@" "$dir"
+done
