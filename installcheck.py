@@ -2,73 +2,13 @@
 """
 Installability checker for Apt repositories, using dose-debcheck as a backend.
 
-By default, this downloads Packages files for the relevant distributions into a temporary folder (as Packages_REPO_DIST_SUITE_ARCH) and outputs results as Installcheck_REPO_DIST_SUITE_ARCH.txt in the current folder.
+By default, this downloads Packages files for the relevant distributions into a temporary folder
+(as Packages_REPO_DIST_SUITE_ARCH) and outputs results as Installcheck_REPO_DIST_SUITE_ARCH.txt in the current folder.
 """
 from __future__ import print_function
 
-### BEGIN CONFIGURATION
-
-# A list of known repositories.
-REPOS = {'debian': 'http://httpredir.debian.org/debian',
-         'urepo': 'https://deb.utopia-repository.org',
-         'urepo-nightlies': 'https://ni.deb.utopia-repository.org',
-         'urepo-test-ubuntu-stable': 'https://deb.utopia-repository.org',
-         'urepo-test-ubuntu-devel': 'https://deb.utopia-repository.org',
-         'ubuntu': 'http://archive.ubuntu.com/ubuntu'}
-
-# A list of architectures to test against.
-TARGET_ARCHS = ['amd64', 'i386', 'arm64']
-
-# Map (distribution, suite) pairs to test to a list of (repo, distribution, suite) pairs to depend on.
-TARGET_DISTS = {
-    ('urepo', 'sid', 'main'): [('debian', 'sid', 'main')],
-    ('urepo', 'sid', 'imports'): [('debian', 'sid', 'main'),
-                                  ('debian', 'sid', 'contrib'),
-                                  ('debian', 'sid', 'non-free'),
-                                  ('urepo', 'sid', 'main')],
-    ('urepo', 'sid', 'forks'): [('debian', 'sid', 'main'),
-                                ('urepo', 'sid', 'main')],
-    ('urepo-nightlies', 'sid-nightlies', 'main'): [('debian', 'sid', 'main'),
-                                                   ('urepo', 'sid', 'main')],
-
-    ('urepo', 'stretch', 'main'): [('debian', 'stretch', 'main'),
-                                   ('debian', 'stretch-backports', 'main'),
-                                   ('urepo', 'stretch', 'imports'),
-                                  ],
-    ('urepo', 'stretch', 'imports'): [('debian', 'stretch', 'main'),
-                                      ('debian', 'stretch', 'contrib'),
-                                      ('debian', 'stretch', 'non-free'),
-                                      ('urepo', 'stretch', 'main'),
-                                     ],
-    ('urepo', 'stretch', 'forks'): [('debian', 'stretch', 'main'),
-                                    ('urepo', 'stretch', 'main'),
-                                   ],
-
-    ('urepo', 'xenial', 'main'): [('ubuntu', 'xenial', 'main'),
-                                  ('ubuntu', 'xenial', 'universe')],
-
-    ('urepo', 'bionic', 'main'): [('ubuntu', 'bionic', 'main'),
-                                  ('ubuntu', 'bionic', 'universe')],
-    ('urepo', 'bionic', 'imports'): [('ubuntu', 'bionic', 'main'),
-                                      ('ubuntu', 'bionic', 'universe'),
-                                      ('ubuntu', 'bionic', 'restricted'),
-                                      ('ubuntu', 'bionic', 'multiverse'),
-                                      ('urepo', 'bionic', 'main')],
-    ('urepo', 'bionic', 'forks'): [('ubuntu', 'bionic', 'main'),
-                                   ('ubuntu', 'bionic', 'universe'),
-                                   ('urepo', 'bionic', 'main')],
-    #('urepo-test-ubuntu-stable', 'sid', 'main'): [('ubuntu', 'bionic', 'main'),
-    #                                              ('ubuntu', 'bionic', 'universe')],
-    #('urepo-test-ubuntu-stable', 'sid', 'imports'): [('ubuntu', 'bionic', 'main'),
-    #                                                 ('ubuntu', 'bionic', 'universe'),
-    #                                                 ('ubuntu', 'bionic', 'restricted'),
-    #                                                 ('ubuntu', 'bionic', 'multiverse')],
-    #('urepo-test-ubuntu-devel', 'sid', 'main'): [('ubuntu', 'devel', 'main'),
-    #                                             ('ubuntu', 'devel', 'universe')],
-}
-
-### END CONFIGURATION
-
+import sys
+import traceback
 import urllib.request
 import os
 import gzip
@@ -77,8 +17,14 @@ import sys
 import tempfile
 import argparse
 import multiprocessing
-import traceback
 import shutil
+
+try:
+    from installcheck_conf import *
+except ImportError:
+    print("Error: Could not load config file from installcheck_conf.py", file=sys.stderr)
+    traceback.print_exc()
+    sys.exit(1)
 
 manager = multiprocessing.Manager()
 PACKAGES_FILES = manager.dict()

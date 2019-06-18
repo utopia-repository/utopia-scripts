@@ -3,4 +3,5 @@ Installcheck_*.txt
 __pycache__
 *.log
 aptly-snapshots*.list*
-aptlylist_conf.py
+*_conf.py
+.directory
