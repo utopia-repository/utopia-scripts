@@ -89,15 +89,13 @@ build_git () {
 	# Bump the version & commit changes.
 	autogit merge --no-edit --no-commit "$BRANCH"
 
-	if [[ "$DEBVERSION" != "$LASTVERSION" ]]; then
-		DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dch -bv "$DEBVERSION" --distribution "$BUILD_DIST" "Auto-build." --force-distribution
-		if [[ $? -ne 0 ]]; then
-			announce_info "dch invocation failed"
-			popd; return
-		fi
-		echo "Saving build version $DEBVERSION to $VERSIONFILE"
-		echo "$DEBVERSION" > "$VERSIONFILE"
+	DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dch -bv "$DEBVERSION" --distribution "$BUILD_DIST" "Auto-build." --force-distribution
+	if [[ $? -ne 0 ]]; then
+		announce_info "dch invocation failed"
+		popd; return
 	fi
+	echo "Saving build version $DEBVERSION to $VERSIONFILE"
+	echo "$DEBVERSION" > "$VERSIONFILE"
 
 	# Generate the tarball
 	echo "Generating tarball for ${PACKAGE}_${VERSION}.orig.tar.gz ..."
