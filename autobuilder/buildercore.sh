@@ -17,20 +17,24 @@ build_and_import () {
 		# Build
 		echo "Building .dsc in $(pwd)"
 		DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dpkg-buildpackage -S -us -uc -d -sa
-		sudo PBUILDER_DIST="$BUILD_DIST" cowbuilder --update
-
-		PKGDIR="${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"
-		mkdir -p "$PKGDIR"
-
-		echo "Building .debs in $(pwd)"
-		sudo PBUILDERSATISFYDEPENDSCMD=/usr/lib/pbuilder/pbuilder-satisfydepends-apt \
-			PBUILDER_DIST="$BUILD_DIST" cowbuilder --build "../${PACKAGE}_${DEBVERSION}.dsc" --buildresult "${PKGDIR}" \
-			&& aptly repo remove "$TARGET_DIST" "\$Source ($PACKAGE) | $PACKAGE"
-		aptly repo add "$TARGET_DIST" "$PKGDIR"/*.deb "$PKGDIR"/*.dsc
 		if [[ $? -eq 0 ]]; then
-			announce_info "New build for ${TARGET_DIST}: ${PACKAGE}_${DEBVERSION}"
+			sudo PBUILDER_DIST="$BUILD_DIST" cowbuilder --update
+
+			PKGDIR="${OUTPUT_DIR}/${PACKAGE}_${DEBVERSION}"
+			mkdir -p "$PKGDIR"
+
+			echo "Building .debs in $(pwd)"
+			sudo PBUILDERSATISFYDEPENDSCMD=/usr/lib/pbuilder/pbuilder-satisfydepends-apt \
+				PBUILDER_DIST="$BUILD_DIST" cowbuilder --build "../${PACKAGE}_${DEBVERSION}.dsc" --buildresult "${PKGDIR}" \
+				&& aptly repo remove "$TARGET_DIST" "\$Source ($PACKAGE) | $PACKAGE"
+			aptly repo add "$TARGET_DIST" "$PKGDIR"/*.deb "$PKGDIR"/*.dsc
+			if [[ $? -eq 0 ]]; then
+				announce_info "New build for ${TARGET_DIST}: ${PACKAGE}_${DEBVERSION}"
+			else
+				announce_info "Failed to add files for this package, check the logs for details."
+			fi
 		else
-			announce_info "Failed to add files for this package, check the logs for details."
+			announce_info "Generating .dsc failed"
 		fi
 	else
 		echo "Skipping actual build as UTOPIAAB_DRY_RUN was set..."
@@ -38,6 +42,7 @@ build_and_import () {
 }
 
 autogit () {
+	echo "Running git $@"
 	GIT_AUTHOR_EMAIL="$EMAIL" GIT_COMMITTER_EMAIL="$EMAIL" GIT_AUTHOR_NAME="$NAME" GIT_COMMITTER_NAME="$NAME" git "$@"
 }
 
@@ -76,7 +81,7 @@ build_git () {
 	echo "[$PACKAGE] Checking if package version $DEBVERSION <= $LASTVERSION"
 	# Grab exit code from dpkg comparison
 	dpkg --compare-versions "$DEBVERSION" '<=' "$LASTVERSION"
-	if [[ $? == 0 && "$UTOPIAAB_FORCE_REBUILD" != true ]]; then
+	if [[ $? -eq 0 && "$UTOPIAAB_FORCE_REBUILD" != true ]]; then
 		announce_info "Skipping build (new version $DEBVERSION is <= what we have)"
 		popd; return
 	fi
@@ -86,6 +91,10 @@ build_git () {
 
 	if [[ "$DEBVERSION" != "$LASTVERSION" ]]; then
 		DEBEMAIL="$EMAIL" DEBFULLNAME="$NAME" dch -bv "$DEBVERSION" --distribution "$BUILD_DIST" "Auto-build." --force-distribution
+		if [[ $? -ne 0 ]]; then
+			announce_info "dch invocation failed"
+			popd; return
+		fi
 		echo "Saving build version $DEBVERSION to $VERSIONFILE"
 		echo "$DEBVERSION" > "$VERSIONFILE"
 	fi
@@ -93,8 +102,11 @@ build_git () {
 	# Generate the tarball
 	echo "Generating tarball for ${PACKAGE}_${VERSION}.orig.tar.gz ..."
 	git archive "$BRANCH" -o "../${PACKAGE}_${VERSION}.orig.tar.gz"
-
-	build_and_import
+	if [[ $? -ne 0 ]]; then
+		announce_info "orig tarball generation FAILED"
+	else
+		build_and_import
+	fi
 	popd  # Return to the last folder
 }
 
