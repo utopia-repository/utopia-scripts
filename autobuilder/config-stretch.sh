@@ -1,10 +1,7 @@
 #!/bin/bash
 
 # Suffix to replace the Debian package revision with
-VERSION_SUFFIX="-0utopia0~autobuild~deb9u1"
-
-# Note: no trailing / for OUTPUT_DIR
-OUTPUT_DIR="../builds"
+VERSION_SUFFIX="-0utopia0~auto~deb9u1"
 
 # Target aptly distribution
 TARGET_DIST="stretch-nightlies"
