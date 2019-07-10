@@ -5,7 +5,7 @@ REPOS = {'debian': 'http://httpredir.debian.org/debian',
          'ubuntu': 'http://archive.ubuntu.com/ubuntu'}
 
 # A list of architectures to test.
-TARGET_ARCHS = ['amd64', 'i386', 'arm64']
+TARGET_ARCHS = ['amd64', 'i386']
 
 # This defines the repos that we want to test. Keys are test target pairs (repo, distribution, suite),
 # and values are a list of (repo, distribution, suite) pairs that each test target depends on.
@@ -33,6 +33,19 @@ TARGET_DISTS = {
     ('urepo', 'stretch', 'forks'): [('debian', 'stretch', 'main'),
                                     ('urepo', 'stretch', 'main'),
                                    ],
+
+    ('urepo', 'buster', 'main'): [('debian', 'buster', 'main'),
+                                   ('debian', 'buster-backports', 'main'),
+                                   ('urepo', 'buster', 'imports'),
+                                 ],
+    ('urepo', 'buster', 'imports'): [('debian', 'buster', 'main'),
+                                      ('debian', 'buster', 'contrib'),
+                                      ('debian', 'buster', 'non-free'),
+                                      ('urepo', 'buster', 'main'),
+                                    ],
+    ('urepo', 'buster', 'forks'): [('debian', 'buster', 'main'),
+                                    ('urepo', 'buster', 'main'),
+                                  ],
 
     ('urepo', 'xenial', 'main'): [('ubuntu', 'xenial', 'main'),
                                   ('ubuntu', 'xenial', 'universe')],
