@@ -24,4 +24,10 @@ source "config-stretch.sh"
 build_git "youtube-dl" "master" "stretch-nightlies"
 publish
 
+echo 'Sourcing config-buster.sh'; source "config-buster.sh"
+
+build_git "youtube-dl" "master" "buster-nightlies"
+build_git "you-get" "develop" "buster-nightlies"
+publish
+
 cleanup
