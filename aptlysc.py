@@ -40,6 +40,16 @@ def purge(reponame, packages):
         print('no matching packages')
         sys.exit(3)
 
+date = time.strftime('%Y-%m-%d')
+def _get_snapshot_name(src):
+    snapshot_name = base_snapshot_name = '%s-%s' % (src, date)
+    c = 0
+    # Increment to reponame-date+X on snapshot name collision
+    while snapshot_name in existing_snapshots:
+        c += 1
+        snapshot_name = "%s+%s" % (base_snapshot_name, c)
+    return snapshot_name
+
 try:
     command = sys.argv[1].lower()
 except IndexError:
@@ -47,7 +57,8 @@ except IndexError:
 params = sys.argv[2:]
 repos = subprocess.check_output(['aptly', 'repo', 'list', '-raw']).decode('utf-8').split('\n')[:-1]
 mirrors = subprocess.check_output(['aptly', 'mirror', 'list', '-raw']).decode('utf-8').split('\n')[:-1]
-date = time.strftime('%Y-%m-%d')
+
+existing_snapshots = subprocess.check_output(['aptly', 'snapshot', 'list', '-raw']).decode('utf-8').splitlines()
 
 if command == 'getdup':
     if len(sys.argv) < 3:
@@ -57,12 +68,13 @@ if command == 'getdup':
 elif command == 'msnapshot':
     mirrors = params or mirrors
     for mir in mirrors:
-        sys.stdout.write(subprocess.check_output(['aptly', 'snapshot', 'create', '%s-%s' % (mir, date), 'from', 'mirror', mir]).decode('utf-8'))
+        snapshot_name = base_snapshot_name = '%s-%s' % (repo, date)
+        sys.stdout.write(subprocess.check_output(['aptly', 'snapshot', 'create', _get_snapshot_name(mir), 'from', 'mirror', mir]).decode('utf-8'))
 
 elif command == 'rsnapshot':
     repos = params or repos
     for repo in repos:
-        sys.stdout.write(subprocess.check_output(['aptly', 'snapshot', 'create', '%s-%s' % (repo, date), 'from', 'repo', repo]).decode('utf-8'))
+        sys.stdout.write(subprocess.check_output(['aptly', 'snapshot', 'create', _get_snapshot_name(repo), 'from', 'repo', repo]).decode('utf-8'))
 
 elif command == 'refreshmirrors':
     for m in mirrors:
