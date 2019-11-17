@@ -2,10 +2,7 @@
 """
 Snapshot update announcer for aptly servers: when ran on an interval, this
 script fetches all published snapshots from aptly (via a subprocess), saves
-them, and announces any changes since the last execution to a FIFO pipe.
-
-Some FIFO-based chat clients include http://tools.suckless.org/ii/ for IRC
-and https://github.com/contyk/jj for Jabber/XMPP.
+them, and announces any changes since the last execution to irkerd.
 """
 
 import re
@@ -14,6 +11,9 @@ import json
 import pprint
 import os
 import os.path
+import socket
+
+import requests
 
 ### BEGIN CONFIGURATION
 
@@ -23,10 +23,11 @@ FILENAME = 'aptly-snapshots.list'
 # Determines the folder where diffs should be created.
 OUTDIR = '/srv/aptly/public/sndiff'
 
-# FIFO pipe to announce to
-ANNOUNCE_DEST = os.path.expanduser('~/ii/localhost/#dev/in')
+# irker destination to announce to
+ANNOUNCE_IRKER = ('localhost', 6659)
+ANNOUNCE_DEST = "ircs://irc.overdrivenetworks.com/#dev"
 
-# Formats the text when using FIFO announce
+# Formats the text when announcing
 # 0 = target dist, 1 = old snapshot, 2 = new snapshot, 3 = snapshot diff filename
 ANNOUNCE_FORMAT = 'New packages released for {0}: {1} -> {2} https://deb.utopia-repository.org/sndiff/{3}'
 
@@ -78,9 +79,12 @@ for line in text.splitlines():
                 with open(diff_outpath, 'w') as diff_f:
                     diff_f.write('Changes from %s to %s:\n' % (old_snapshot, snapshot))
                     diff_f.write(diff)
-                with open(ANNOUNCE_DEST, 'w') as fifo_f:
-                    fifo_f.write(ANNOUNCE_FORMAT.format(target.lstrip('/.'), old_snapshot, snapshot, diff_filename))
-                    fifo_f.write('\n')
+
+                announce_text = ANNOUNCE_FORMAT.format(target.lstrip('/.'), old_snapshot, snapshot, diff_filename)
+                payload = json.dumps({'to': ANNOUNCE_DEST, 'privmsg': announce_text})
+                sock = socket.create_connection(ANNOUNCE_IRKER)
+                sock.send(payload.encode('utf-8'))
+                sock.close()
 
 print()
 print('Writing publish list to %s:' % FILENAME)
