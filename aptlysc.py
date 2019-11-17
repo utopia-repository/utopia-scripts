@@ -55,9 +55,8 @@ try:
 except IndexError:
     _error()
 params = sys.argv[2:]
-repos = subprocess.check_output(['aptly', 'repo', 'list', '-raw']).decode('utf-8').split('\n')[:-1]
-mirrors = subprocess.check_output(['aptly', 'mirror', 'list', '-raw']).decode('utf-8').split('\n')[:-1]
-
+repos = subprocess.check_output(['aptly', 'repo', 'list', '-raw']).decode('utf-8').splitlines()
+mirrors = subprocess.check_output(['aptly', 'mirror', 'list', '-raw']).decode('utf-8').splitlines()
 existing_snapshots = subprocess.check_output(['aptly', 'snapshot', 'list', '-raw']).decode('utf-8').splitlines()
 
 if command == 'getdup':
