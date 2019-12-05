@@ -18,12 +18,6 @@ build_git "you-get" "develop" "utopia-nightly"
 publish
 sleep 3
 
-echo 'Sourcing config-stretch.sh'
-source "config-stretch.sh"
-
-build_git "youtube-dl" "master" "stretch-nightlies"
-publish
-
 echo 'Sourcing config-buster.sh'; source "config-buster.sh"
 
 build_git "youtube-dl" "master" "buster-nightlies"
