@@ -23,7 +23,7 @@ BUILD_DIST="unstable"
 GPG_KEY="EEBB01E6"
 
 # irker target
-ANNOUNCE_IRKER_TARGET="irc://localhost:16667/dev"
+ANNOUNCE_IRKER_TARGET="ircs://irc.overdrivenetworks.com/#dev"
 
 # Determines whether we should force rebuild existing builds
 FORCE_SAME_BUILD=false
