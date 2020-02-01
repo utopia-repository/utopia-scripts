@@ -11,7 +11,7 @@ for dir in "${INCOMING_ROOT}/"*/; do
 	dist="$(basename "$dir")"
 	echo "Processing dist $dist from directory $dir ..."
 	aptly repo include -uploaders-file="$UPLOADERS_FILE" \
-		-keyring="$HOME/.gnupg/pubring.gpg" \
+		-keyring="$HOME/.gnupg/pubring.kbx" \
 		-repo="$dist" \
 		"$@" "$dir"
 done
