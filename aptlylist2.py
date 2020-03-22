@@ -365,6 +365,7 @@ class AptlyList():
                 # uscan / Watch Status column
                 if run_uscan:
                     if entry.arch == 'source':  # This only exists for source packages
+                        url = upstream_version = None
                         if not watchfile:
                             # No watchfile was found.
                             status = _USCAN_PROBABLY_NATIVE if '-' not in entry.version else _USCAN_WATCH_FILE_NOT_FOUND
@@ -374,14 +375,17 @@ class AptlyList():
                             except subprocess.CalledProcessError:
                                 status = _USCAN_FAILED
                             else:
-                                status, upstream, url = uscan_info
+                                status, upstream_version, url = uscan_info
                                 status = status.strip()
 
                         # Prettify uscan format when applicable
                         status_symbol = _USCAN_FORMAT.get(status)
                         if status_symbol:
                             status = f'{status_symbol} {status}'
-                        outf.write(f"""<td>{status}</td>""")
+                        if url and upstream_version:
+                            outf.write(f"""<td>{status}<br>(<a href="{url}">{upstream_version}</a>)</td>""")
+                        else:
+                            outf.write(f"""<td>{status}</td>""")
                     else:
                         outf.write("""<td>N/A</td>""")
 
