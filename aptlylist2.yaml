@@ -1,0 +1,41 @@
+# Configuration for aptlylist2.py
+
+api:
+  # Aptly API endpoint. Unix sockets can be used using the http+unix URI and escaping
+  # /'s in the filename as %2F
+  endpoint: "http+unix://%2Fsrv%2Faptly%2Fapi%2Faptly.sock/api"
+
+# STUB: NOT IMPLEMENTED YET
+extractors:
+  # Whether to extract changelogs from source packages (changelog entries for binary packages
+  # will point back to the source package)
+  # This requires extracting every processed source package, which may be slow on large repositories.
+  changelogs: true
+
+  # Whether to run uscan to process debian/watch files.
+  # This requires extracting every processed source package, which may be slow on large repositories.
+  uscan: true
+
+  # Max size of source package tarballs to extract from.
+  source_max_filesize: 20971520  # 20 MB
+
+html:
+  # Name of the repository (used for page titles)
+  repo_name: The Utopia Repository
+
+  # Address of the public "pool" directory, used for create package download links.
+  # Leave this blank to disable URL generation.
+  pool_root_url: "https://deb.utopia-repository.org/pool"
+
+  # Address where changelogs will be made available. Required if extractors::changelogs is enabled
+  changelogs_root_url: "https://deb.utopia-repository.org/changelogs"
+
+  # Sets the filename format for output files.
+  output_filename: "/srv/aptly/public/{distribution}_{component}_list.html"
+
+  # Extra lines to include in <head> block
+  extra_headers: >
+    <!-- From https://git.overdrivenetworks.com/james/ureposite -->
+    <link rel="stylesheet" type="text/css" href="gstyle.css">
+    <!-- From http://www.kryogenix.org/code/browser/sorttable/ -->
+    <script src="sorttable.js"></script>
