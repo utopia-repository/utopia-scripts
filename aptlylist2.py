@@ -399,7 +399,8 @@ class AptlyList():
                     heading = 'Suggests'
                     dependency_text += f"""<span class="dependency deptype-suggests">{heading}:</span> {html.escape(entry.suggests)}<br>"""
                 outf.write(f"""<td>{dependency_text}</td>
-</tr>""")
+</tr>
+""")
 
             curr_time = time.strftime("%I:%M:%S %p, %b %d %Y +0000", time.gmtime())
             outf.write(f"""</table>
@@ -411,11 +412,16 @@ class AptlyList():
     def process_targets(self, targets):
         """
         Process a list of "distribution" or "distribution/component" targets. Component defaults to "main" if not set.
+        If no targets are given, generate package lists for all published distributions.
         """
         known_dists = self.get_published_dists()
+
+        if not targets:
+            targets = {'/'.join(pair) for pair in known_dists}
+
         for target in targets:
             if '/' in target:
-                dist, component = target.split('/', 1)
+                dist, component = target.rsplit('/', 1)
             else:
                 dist = target
                 component = 'main'
@@ -437,7 +443,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     #parser.add_argument("-V", "--version", action='version', version=f'aptlylist {__version__}')
     parser.add_argument("-c", "--config", type=str, help=f'path to config file (defaults to aptlylist2.yaml)', default='aptlylist2.yaml')
-    parser.add_argument("targets", nargs='+', help='targets to process - can be in the form "distribution" or "distribution/component"')
+    parser.add_argument("targets", nargs='*', help='targets to process, in the form "distribution" or "distribution/component". if no targets are given, process all published distributions in aptly')
     args = parser.parse_args()
 
     list_engine = AptlyList(args.config)
