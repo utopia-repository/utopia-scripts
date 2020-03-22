@@ -34,7 +34,13 @@ _USCAN_FORMAT = {
     _USCAN_PROBABLY_NATIVE: "↷",
 }
 
-class SourceTooLargeError(RuntimeError):
+class SourceExtractionError(RuntimeError):
+    pass
+
+class SourceTooLargeError(SourceExtractionError):
+    pass
+
+class SourceNotFoundError(SourceExtractionError):
     pass
 
 class PackageEntry():
@@ -92,7 +98,10 @@ class PackageEntry():
         # Find the first tarball without "orig" in its name
         debian_tar = [entry for entry in self.files
                       if '.tar' in entry and '.orig' not in entry]
-        debian_tar = debian_tar[0]
+        try:
+            debian_tar = debian_tar[0]
+        except IndexError:
+            raise SourceNotFoundError("Could not find source tarball in files: %s" % self.files) from None
 
         debian_tar = self._resolve_pool_url(pool_directory, debian_tar)
 
@@ -328,7 +337,7 @@ class AptlyList():
                             extract_changelog=extract_changelogs,
                             extract_watchfile=run_uscan
                         )
-                    except (tarfile.TarError, OSError, SourceTooLargeError):
+                    except (tarfile.TarError, OSError, SourceExtractionError):
                         print(f'ERROR: failed to extract source tarball for package {entry.name} {entry.version}')
                         traceback.print_exc()
 
