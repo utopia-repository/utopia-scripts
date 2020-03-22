@@ -24,6 +24,9 @@ extractors:
   # This requires extracting every processed source package, which may be slow on large repositories.
   uscan: true
 
+  # List of distribution/component targets to enable uscan on. If blank, will enable uscan for all targets.
+  uscan_dists: ["sid/main", "sid/imports"]
+
 html:
   # Name of the repository (used for page titles)
   repo_name: The Utopia Repository

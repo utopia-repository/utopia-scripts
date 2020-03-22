@@ -172,7 +172,7 @@ class AptlyList():
         status = root.find('status').text
         upstream_ver = root.find('upstream-version').text
         upstream_url = root.find('upstream-url').text
-        print(f"{name}_{version}: Got uscan data %r, %r, %r" % (status, upstream_ver, upstream_url))
+        print(f"  {name}_{version}: Got uscan data %r, %r, %r" % (status, upstream_ver, upstream_url))
         return (status, upstream_ver, upstream_url)
 
     def get_published_dists(self):
@@ -258,6 +258,7 @@ class AptlyList():
         changelogs_dir      = extractor_opts.get('changelogs_directory')
         local_pool_dir      = extractor_opts.get('local_pool_directory')
         source_max_filesize = extractor_opts.get('source_max_filesize', 20971520)
+        uscan_dists         = extractor_opts.get('uscan_dists', [])
 
         if extract_changelogs:
             if not changelogs_root_url:
@@ -269,6 +270,9 @@ class AptlyList():
 
         if run_uscan and not shutil.which('uscan'):
             print('WARNING: uscan not found in path, disabling watchfile checking')
+            run_uscan = False
+        elif uscan_dists and f'{dist}/{component}' not in uscan_dists:
+            # uscan_dists is set and uscan is not enabled for this target
             run_uscan = False
 
         should_extract_sources = extract_changelogs or run_uscan
@@ -350,7 +354,7 @@ class AptlyList():
                         with open(changelog_outname, 'wb') as changelog_outf:
                             changelog_outf.write(changelog)
 
-                        print(f'{unique_id}: Extracted changelog to {changelog_outname}')
+                        print(f'  {unique_id}: Extracted changelog to {changelog_outname}')
                         changelog_url = f'{changelogs_root_url}/{filename}'
                         outf.write(f"""<td><a href="{changelog_url}">Changelog</a></td>""")
                     elif entry.arch != 'source':
