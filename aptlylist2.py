@@ -14,11 +14,25 @@ import subprocess
 import tarfile
 import time
 import traceback
+import xml.etree.ElementTree
 
 # External modules
 import requests
 import requests_unixsocket
 import yaml
+
+# Constants
+_USCAN_WATCH_FILE_NOT_FOUND = "watch file not found"
+_USCAN_FAILED = "failed to get status"
+_USCAN_PROBABLY_NATIVE = "N/A package is native"
+_USCAN_FORMAT = {
+    "newer package available": "💡",
+    "only older package available": "⁉️",
+    "up to date": "✔️",
+    _USCAN_FAILED: "❌",
+    _USCAN_WATCH_FILE_NOT_FOUND: "🤷",
+    _USCAN_PROBABLY_NATIVE: "↷",
+}
 
 class SourceTooLargeError(RuntimeError):
     pass
@@ -127,6 +141,32 @@ class AptlyList():
             url = f'{endpoint}/{path}'
             r = requests.get(url)
             return r.json()
+
+    @staticmethod
+    def check_uscan(name, version, watchfile):
+        """
+        Runs uscan with the given current package version and watchfile data.
+
+        Returns a tuple (status, detected_upstream_version, upstream_url) on success.
+        """
+        upstream_version = version.rsplit('-', 1)[0]
+        proc = subprocess.Popen([
+            'uscan', '--dehs',
+            '--package', name,
+            '--upstream-version', upstream_version,
+            #'--verbose',
+            '--watchfile', '-'],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
+        uscan_output, _ = proc.communicate(watchfile)
+
+        # Decode uscan output in XML (DEHS) format
+        root = xml.etree.ElementTree.fromstring(uscan_output.decode('utf-8'))
+        status = root.find('status').text
+        upstream_ver = root.find('upstream-version').text
+        upstream_url = root.find('upstream-url').text
+        print(f"{name}_{version}: Got uscan data %r, %r, %r" % (status, upstream_ver, upstream_url))
+        return (status, upstream_ver, upstream_url)
 
     def get_published_dists(self):
         """
@@ -309,8 +349,26 @@ class AptlyList():
 
                 # uscan / Watch Status column
                 if run_uscan:
-                    # STUB: not implemented yet
-                    outf.write("""<td>N/A</td>""")
+                    if entry.arch == 'source':  # This only exists for source packages
+                        if not watchfile:
+                            # No watchfile was found.
+                            status = _USCAN_PROBABLY_NATIVE if '-' not in entry.version else _USCAN_WATCH_FILE_NOT_FOUND
+                        else:
+                            try:
+                                uscan_info = self.check_uscan(entry.name, entry.version, watchfile)
+                            except subprocess.CalledProcessError:
+                                status = _USCAN_FAILED
+                            else:
+                                status, upstream, url = uscan_info
+                                status = status.strip()
+
+                        # Prettify uscan format when applicable
+                        status_symbol = _USCAN_FORMAT.get(status)
+                        if status_symbol:
+                            status = f'{status_symbol} {status}'
+                        outf.write(f"""<td>{status}</td>""")
+                    else:
+                        outf.write("""<td>N/A</td>""")
 
                 # Vcs-Browser column
                 if entry.vcs_browser:
