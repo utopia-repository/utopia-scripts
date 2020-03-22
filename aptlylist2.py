@@ -105,16 +105,14 @@ class PackageEntry():
             watchfile   = changelog   = None
             watchfile_f = changelog_f = None
 
-            if extract_changelog:
-                try:
-                    changelog_f = tar_f.extractfile("debian/changelog")
-                except KeyError:
-                    pass
-            if extract_watchfile:
-                try:
-                    watchfile_f = tar_f.extractfile("debian/watch")
-                except KeyError:
-                    pass
+            # Try to guess where the changelog and watch files are located.
+            # An absolute path (debian/XYZ) only works for non-native packages - native packages
+            # have an arbitrary prefix folder that we have to get around.
+            for member in tar_f.getmembers():
+                if extract_changelog and member.name.endswith("debian/changelog"):
+                    changelog_f = tar_f.extractfile(member)
+                elif extract_watchfile and member.name.endswith("debian/watch"):
+                    watchfile_f = tar_f.extractfile(member)
 
             if changelog_f:
                 changelog = changelog_f.read()
