@@ -267,8 +267,10 @@ class AptlyList():
                 else:
                     arch_field = entry.arch
 
+                unique_id      = f"{entry.name}_{entry.version}"
+                unique_id_arch = f"{unique_id}_{entry.arch}"
                 # Name, version, architecture/download URL columns
-                outf.write(f"""<tr id="{entry.name}_{entry.version}">
+                outf.write(f"""<tr id="{unique_id_arch}">
 <td>{name_field}</td>
 <td>{entry.version}</td>
 <td>{arch_field}</td>
@@ -290,16 +292,18 @@ class AptlyList():
 
                 # Changelog column
                 if extract_changelogs:
-                    if changelog:
-                        filename = f'{entry.name}_{entry.version}.changelog'
+                    if changelog and entry.arch == 'source':
+                        filename = f'{unique_id}.changelog'
                         changelog_outname = os.path.join(changelogs_dir, filename)  # Full path on local disk
 
                         with open(changelog_outname, 'wb') as changelog_outf:
                             changelog_outf.write(changelog)
 
-                        print(f'Extracted changelog to {changelog_outname}')
+                        print(f'{unique_id}: Extracted changelog to {changelog_outname}')
                         changelog_url = f'{changelogs_root_url}/{filename}'
                         outf.write(f"""<td><a href="{changelog_url}">Changelog</a></td>""")
+                    elif entry.arch != 'source':
+                        outf.write(f"""<td>See <a href="#{entry.source_name}_{entry.version}_source">source</a></td>""")
                     else:
                         outf.write("""<td>N/A</td>""")
 
