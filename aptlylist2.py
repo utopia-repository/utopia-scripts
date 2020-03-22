@@ -175,6 +175,9 @@ class AptlyList():
         data = self.aptly_call('publish')
         for entry in data:
             dist = entry['Distribution']
+            # TODO: test this more fully
+            if entry['Prefix'] != '.':
+                dist = f"{entry['Prefix']}/{dist}"
             source_type = AptlySourceType.REPO if entry['SourceKind'] == 'local' else AptlySourceType.SNAPSHOT
             for component_entry in entry['Sources']:
                 component = component_entry['Component']
@@ -264,7 +267,8 @@ class AptlyList():
             print('WARNING: local_pool_directory is not set, disabling source package extraction')
             extract_changelogs = run_uscan = False
 
-        filename = output_filename.format(distribution=dist, component=component)
+        # HACK: Mangle / in aptly prefixes to _
+        filename = output_filename.format(distribution=dist.replace('/', '_'), component=component)
 
         packages.sort(key=lambda entry: entry.name)
 
