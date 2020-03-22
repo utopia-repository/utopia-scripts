@@ -5,19 +5,25 @@ api:
   # /'s in the filename as %2F
   endpoint: "http+unix://%2Fsrv%2Faptly%2Fapi%2Faptly.sock/api"
 
-# STUB: NOT IMPLEMENTED YET
 extractors:
   # Whether to extract changelogs from source packages (changelog entries for binary packages
   # will point back to the source package)
   # This requires extracting every processed source package, which may be slow on large repositories.
   changelogs: true
 
-  # Whether to run uscan to process debian/watch files.
-  # This requires extracting every processed source package, which may be slow on large repositories.
-  uscan: true
+  # Sets where to extract changelogs to
+  changelogs_directory: "/srv/aptly/public/changelogs"
+
+  # Path to repo public "pool" directory on disk - this script will try to find files to exctact there
+  local_pool_directory: /srv/aptly/public/pool
 
   # Max size of source package tarballs to extract from.
   source_max_filesize: 20971520  # 20 MB
+
+  # Whether to run uscan to process debian/watch files.
+  # This requires extracting every processed source package, which may be slow on large repositories.
+  # STUB: NOT IMPLEMENTED YET
+  uscan: false
 
 html:
   # Name of the repository (used for page titles)

@@ -8,12 +8,20 @@ import argparse
 import enum
 import html
 import json
+import os.path
+import shutil
+import subprocess
+import tarfile
 import time
+import traceback
 
 # External modules
 import requests
 import requests_unixsocket
 import yaml
+
+class SourceTooLargeError(RuntimeError):
+    pass
 
 class PackageEntry():
     """
@@ -34,7 +42,7 @@ class PackageEntry():
         self.vcs_browser = vcs_browser
 
     def _resolve_pool_url(self, pool_root_url, filename):
-        """Resolves the download URL for a filename."""
+        """Resolves the download URL or path for a filename."""
         # For Debian repos this uses the following format:
         #    https://deb.debian.org/debian/pool/<component>/<prefix>/<source package name>/<filename>
         # e.g.
@@ -57,6 +65,48 @@ class PackageEntry():
         filename = filename[0]
 
         return self._resolve_pool_url(pool_root_url, filename)
+
+    def extract_metadata(self, pool_directory, maxsize, extract_changelog=True, extract_watchfile=True):
+        """
+        Extract debian/watch and debian/changelog from a source package.
+
+        This returns a tuple on success: (<changelog data>, <watch data>)
+        """
+        if self.arch != 'source':
+            raise NotImplementedError("Only source packages are supported for extraction")
+
+        # Find the first tarball without "orig" in its name
+        debian_tar = [entry for entry in self.files
+                      if '.tar' in entry and '.orig' not in entry]
+        debian_tar = debian_tar[0]
+
+        debian_tar = self._resolve_pool_url(pool_directory, debian_tar)
+
+        if maxsize > 0:
+            size = os.path.getsize(debian_tar)
+            if size > maxsize:
+                raise SourceTooLargeError(f"{debian_tar} is too large ({size} > {maxsize})")
+
+        with tarfile.open(debian_tar, 'r') as tar_f:
+            watchfile   = changelog   = None
+            watchfile_f = changelog_f = None
+
+            if extract_changelog:
+                try:
+                    changelog_f = tar_f.extractfile("debian/changelog")
+                except KeyError:
+                    pass
+            if extract_watchfile:
+                try:
+                    watchfile_f = tar_f.extractfile("debian/watch")
+                except KeyError:
+                    pass
+
+            if changelog_f:
+                changelog = changelog_f.read()
+            if watchfile_f:
+                watchfile = watchfile_f.read()
+            return (changelog, watchfile)
 
     def __repr__(self):
         return f'<PackageEntry object for {self.name}_{self.version}_{self.arch}>'
@@ -145,15 +195,36 @@ class AptlyList():
         """
         Write a package list for the given distribution+component given a list of PackageEntry.
         """
-        html_opts       = self.config['html']
-        repo_name       = html_opts['repo_name']
-        extra_headers   = html_opts.get('extra_headers', '')
-        output_filename = html_opts['output_filename']
-        pool_root_url   = html_opts.get('pool_root_url')
+        html_opts           = self.config['html']
+        repo_name           = html_opts['repo_name']
+        extra_headers       = html_opts.get('extra_headers', '')
+        output_filename     = html_opts['output_filename']
+        pool_root_url       = html_opts.get('pool_root_url')
+        changelogs_root_url = html_opts.get('changelogs_root_url')
 
-        extractor_opts     = self.config['extractors']
-        extract_changelogs = extractor_opts.get('changelogs', False)
-        run_uscan          = extractor_opts.get('uscan', False)
+        extractor_opts      = self.config['extractors']
+        extract_changelogs  = extractor_opts.get('changelogs', False)
+        run_uscan           = extractor_opts.get('uscan', False)
+        changelogs_dir      = extractor_opts.get('changelogs_directory')
+        local_pool_dir      = extractor_opts.get('local_pool_directory')
+        source_max_filesize = extractor_opts.get('source_max_filesize', 20971520)
+
+        if extract_changelogs:
+            if not changelogs_root_url:
+                print('WARNING: changelogs_root_url is not set, disabling changelog extraction')
+                extract_changelogs = False
+            elif not changelogs_dir:
+                print('WARNING: changelogs_directory is not set, disabling changelog extraction')
+                extract_changelogs = False
+
+        if run_uscan and not shutil.which('uscan'):
+            print('WARNING: uscan not found in path, disabling watchfile checking')
+            run_uscan = False
+
+        should_extract_sources = extract_changelogs or run_uscan
+        if should_extract_sources and not local_pool_dir:
+            print('WARNING: local_pool_directory is not set, disabling source package extraction')
+            extract_changelogs = run_uscan = False
 
         filename = output_filename.format(distribution=dist, component=component)
 
@@ -202,11 +273,35 @@ class AptlyList():
 <td>{entry.version}</td>
 <td>{arch_field}</td>
 """)
+
+                changelog = watchfile = None
+                if should_extract_sources and entry.arch == 'source':
+                    try:
+                        changelog, watchfile = entry.extract_metadata(
+                            local_pool_dir,
+                            source_max_filesize,
+                            # Only extract the pieces we need to save time
+                            extract_changelog=extract_changelogs,
+                            extract_watchfile=run_uscan
+                        )
+                    except (tarfile.TarError, OSError, SourceTooLargeError):
+                        print(f'ERROR: failed to extract source tarball for package {entry.name} {entry.version}')
+                        traceback.print_exc()
+
                 # Changelog column
                 if extract_changelogs:
-                    # STUB: not implemented yet
-                    #f.write("""<td><a href="{}">Changelog</a></td>""".format(os.path.relpath(changelog_path, OUTDIR)))
-                    outf.write("""<td>N/A</td>""")
+                    if changelog:
+                        filename = f'{entry.name}_{entry.version}.changelog'
+                        changelog_outname = os.path.join(changelogs_dir, filename)  # Full path on local disk
+
+                        with open(changelog_outname, 'wb') as changelog_outf:
+                            changelog_outf.write(changelog)
+
+                        print(f'Extracted changelog to {changelog_outname}')
+                        changelog_url = f'{changelogs_root_url}/{filename}'
+                        outf.write(f"""<td><a href="{changelog_url}">Changelog</a></td>""")
+                    else:
+                        outf.write("""<td>N/A</td>""")
 
                 # uscan / Watch Status column
                 if run_uscan:
