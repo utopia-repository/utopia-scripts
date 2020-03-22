@@ -5,3 +5,6 @@ __pycache__
 aptly-snapshots*.list*
 *_conf.py
 .directory
+
+aptlylist*.yaml
+!*.example.yaml

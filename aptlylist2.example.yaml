@@ -22,8 +22,7 @@ extractors:
 
   # Whether to run uscan to process debian/watch files.
   # This requires extracting every processed source package, which may be slow on large repositories.
-  # STUB: NOT IMPLEMENTED YET
-  uscan: false
+  uscan: true
 
 html:
   # Name of the repository (used for page titles)
