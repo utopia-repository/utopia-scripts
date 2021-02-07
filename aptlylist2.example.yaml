@@ -27,6 +27,9 @@ extractors:
   # List of distribution/component targets to enable uscan on. If blank, will enable uscan for all targets.
   uscan_dists: ["sid/main", "sid/imports"]
 
+  # uscan timeout - defaults to 10 seconds
+  uscan_timeout: 10
+
 html:
   # Name of the repository (used for page titles)
   repo_name: The Utopia Repository

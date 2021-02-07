@@ -149,23 +149,20 @@ class AptlyList():
             r = requests.get(url)
             return r.json()
 
-    @staticmethod
-    def check_uscan(name, version, watchfile):
+    def check_uscan(self, name, version, watchfile):
         """
         Runs uscan with the given current package version and watchfile data.
 
         Returns a tuple (status, detected_upstream_version, upstream_url) on success.
         """
         upstream_version = version.rsplit('-', 1)[0]
-        proc = subprocess.Popen([
+        uscan_output = subprocess.check_output([
             'uscan', '--dehs',
             '--package', name,
             '--upstream-version', upstream_version,
-            #'--verbose',
+            '--timeout', str(self.config['extractors'].get('uscan_timeout', 10)),
             '--watchfile', '-'],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-
-        uscan_output, _ = proc.communicate(watchfile)
+            input=watchfile)
 
         # Decode uscan output in XML (DEHS) format
         root = xml.etree.ElementTree.fromstring(uscan_output.decode('utf-8'))
