@@ -264,6 +264,8 @@ class AptlyList():
             elif not changelogs_dir:
                 print('WARNING: changelogs_directory is not set, disabling changelog extraction')
                 extract_changelogs = False
+            else:
+                os.makedirs(changelogs_dir, exist_ok=True)
 
         if run_uscan and not shutil.which('uscan'):
             print('WARNING: uscan not found in path, disabling watchfile checking')

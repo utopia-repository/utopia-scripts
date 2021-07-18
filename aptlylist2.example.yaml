@@ -3,7 +3,7 @@
 api:
   # Aptly API endpoint. Unix sockets can be used using the http+unix URI and escaping
   # /'s in the filename as %2F
-  endpoint: "http+unix://%2Fsrv%2Faptly%2Fapi%2Faptly.sock/api"
+  endpoint: "http+unix://%2Fsrv%2Faptly%2Faptly.sock/api"
 
 extractors:
   # Whether to extract changelogs from source packages (changelog entries for binary packages
@@ -12,7 +12,7 @@ extractors:
   changelogs: true
 
   # Sets where to extract changelogs to
-  changelogs_directory: "/srv/aptly/public/changelogs"
+  changelogs_directory: "/srv/aptly-web/changelogs"
 
   # Path to repo public "pool" directory on disk - this script will try to find files to exctact there
   local_pool_directory: /srv/aptly/public/pool
@@ -42,11 +42,10 @@ html:
   changelogs_root_url: "https://deb.utopia-repository.org/changelogs"
 
   # Sets the filename format for output files.
-  output_filename: "/srv/aptly/public/{distribution}_{component}_list.html"
+  output_filename: "/srv/aptly-web/{distribution}_{component}_list.html"
 
   # Extra lines to include in <head> block
   extra_headers: >
-    <!-- From https://git.overdrivenetworks.com/james/ureposite -->
     <link rel="stylesheet" type="text/css" href="gstyle.css">
     <!-- From http://www.kryogenix.org/code/browser/sorttable/ -->
     <script src="sorttable.js"></script>
