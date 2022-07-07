@@ -2,8 +2,8 @@
 # Runs 'aptly include' on every subdir of an incoming root directory,
 # where each subdir contains packages for a repo of the same name.
 
-UPLOADERS_FILE="/srv/aptly/urepo-uploaders.json"
-INCOMING_ROOT="/srv/aptly/incoming"
+UPLOADERS_FILE="/etc/aptly/uploaders.conf"
+INCOMING_ROOT="/srv/aptly-incoming"
 
 #set -x
 

@@ -21,11 +21,11 @@ import requests
 FILENAME = 'aptly-snapshots.list'
 
 # Determines the folder where diffs should be created.
-OUTDIR = '/srv/aptly/public/sndiff'
+OUTDIR = '/srv/aptly-web/sndiff'
 
 # irker destination to announce to
 ANNOUNCE_IRKER = ('localhost', 6659)
-ANNOUNCE_DEST = "ircs://irc.overdrivenetworks.com/#dev"
+ANNOUNCE_DEST = "irc://nightfall.highdef.dn42/#utopia-announce"
 
 # Formats the text when announcing
 # 0 = target dist, 1 = old snapshot, 2 = new snapshot, 3 = snapshot diff filename
