@@ -23,10 +23,6 @@ FILENAME = 'aptly-snapshots.list'
 # Determines the folder where diffs should be created.
 OUTDIR = '/srv/aptly-web/sndiff'
 
-# irker destination to announce to
-ANNOUNCE_IRKER = ('localhost', 6659)
-ANNOUNCE_DEST = "irc://nightfall.highdef.dn42/#utopia-announce"
-
 # Formats the text when announcing
 # 0 = target dist, 1 = old snapshot, 2 = new snapshot, 3 = snapshot diff filename
 ANNOUNCE_FORMAT = 'New packages released for {0}: {1} -> {2} https://deb.utopia-repository.org/sndiff/{3}'
@@ -80,11 +76,12 @@ for line in text.splitlines():
                     diff_f.write('Changes from %s to %s:\n' % (old_snapshot, snapshot))
                     diff_f.write(diff)
 
-                announce_text = ANNOUNCE_FORMAT.format(target.lstrip('/.'), old_snapshot, snapshot, diff_filename)
-                payload = json.dumps({'to': ANNOUNCE_DEST, 'privmsg': announce_text})
-                sock = socket.create_connection(ANNOUNCE_IRKER)
-                sock.send(payload.encode('utf-8'))
-                sock.close()
+                if announce_url := os.environ.get('WEBHOOK_URL'):
+                    announce_text = ANNOUNCE_FORMAT.format(target.lstrip('/.'), old_snapshot, snapshot, diff_filename)
+                    payload = {'text': announce_text}
+                    requests.post(announce_url, json={'text': announce_text})
+                else:
+                    print("Skipping announce as WEBHOOK_URL environment variable is not set")
 
 print()
 print('Writing publish list to %s:' % FILENAME)
