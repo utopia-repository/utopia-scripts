@@ -5,19 +5,19 @@ Installability checker for Apt repositories, using dose-debcheck as a backend.
 By default, this downloads Packages files for the relevant distributions into a temporary folder
 (as Packages_REPO_DIST_SUITE_ARCH) and outputs results as Installcheck_REPO_DIST_SUITE_ARCH.txt in the current folder.
 """
-from __future__ import print_function
 
-import sys
-import traceback
-import urllib.request
-import os
+import argparse
 import gzip
+import lzma
+import multiprocessing
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
-import argparse
-import multiprocessing
-import shutil
+import traceback
+
+import requests
 
 try:
     from installcheck_conf import *
@@ -29,29 +29,45 @@ except ImportError:
 manager = multiprocessing.Manager()
 PACKAGES_FILES = manager.dict()
 
+_ARCHIVE_FORMATS = {
+    'xz': lzma.decompress,
+    'gz': gzip.decompress,
+}
+def try_download_packages_file(link, filename, extension):
+    link = f'{link}.{extension}'
+    print('Getting packages link %s' % link)
+    try:
+        r = requests.get(link)
+        r.raise_for_status()  # raise if not success
+    except requests.exceptions.RequestException:
+        return False
+
+    #print(link, r, len(r.content))
+    extract_func = _ARCHIVE_FORMATS[extension]
+    try:
+        data = extract_func(r.content)
+        with open(filename, 'wb') as out_f:
+            out_f.write(data)
+    except ValueError:
+        traceback.print_exc()
+        return False
+    return True
+
 def download_packages_file(repo, dist, suite, arch, skip_download=False):
     """
     Gets the Packages file given the repository, distribution, suite, and
     architecture.
     """
     # http://cdn-fastly.deb.debian.org/debian/dists/sid/main/binary-amd64/
-    link = '%s/dists/%s/%s/binary-%s/Packages.gz' % (REPOS[repo], dist, suite, arch)
+    link = '%s/dists/%s/%s/binary-%s/Packages' % (REPOS[repo], dist, suite, arch)
     filename = 'Packages_%s_%s_%s_%s' % (repo, dist, suite, arch)
 
     if not skip_download:
-        print('Getting packages link %s' % link)
-        # TODO: we should probably make sure the relevant Packages files actually exist...
-        request = urllib.request.Request(link, headers={'User-Agent': "Mozilla/5.0 (compatible)"})
-        try:
-            data = urllib.request.urlopen(request).read()
-        except OSError:
-            traceback.print_exc()
-            print('Failed to download %s, skipping the combination (%r, %r, %r, %r)' % (link, repo, dist, suite, arch))
-            return
-        extracted_data = gzip.decompress(data)
-
-        with open(filename, 'wb') as f:
-            f.write(extracted_data)
+        for ext in _ARCHIVE_FORMATS:
+            if try_download_packages_file(link, filename, ext):
+                break
+        else:
+            print(f'Failed to download any package file for {filename}')
     else:
         if os.path.isfile(filename):
             print('Reusing Packages file %s' % filename)
@@ -99,7 +115,6 @@ def test_dist(repo, dist, suite, arch, outfilename=None):
     if outfilename is not None and process.returncode != 0:
         with open(outfilename, 'w') as outfile:
             # Only write reports for combinations that fail testing.
-            outfile.write('Results for %s, %s, %s:\n' % (repo, dist, suite))
             outfile.writelines(lines)
 
 if __name__ == '__main__':
