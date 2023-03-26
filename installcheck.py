@@ -115,6 +115,8 @@ def test_dist(repo, dist, suite, arch, outfilename=None):
     if outfilename is not None and process.returncode != 0:
         with open(outfilename, 'w') as outfile:
             # Only write reports for combinations that fail testing.
+            if lines:
+                outfile.write('Results for %s, %s, %s:\n' % (repo, dist, suite))
             outfile.writelines(lines)
 
 if __name__ == '__main__':
