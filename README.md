@@ -12,5 +12,8 @@ Backend automation scripts for [the Utopia Repository](https://deb.utopia-reposi
 ##### installcheck.py
  * Check package installability in APT repositories - a fully automatic wrapper for [dose-debcheck](https://qa.debian.org/dose/debcheck.html).
 
+##### multibuild.sh
+ * Wrapper around cowbuilder to build a package in multiple chroots
+
 ##### snapshots.py
  * Snapshot update announcer for aptly servers.
