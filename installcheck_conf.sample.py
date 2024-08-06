@@ -1,6 +1,8 @@
 # A list of known repositories.
-REPOS = {'debian': 'http://deb.debian.org/debian',
-         'urepo': 'https://deb.utopia-repository.org',}
+REPOS = {
+    'debian': 'http://deb.debian.org/debian',
+    'urepo': 'https://deb.utopia-repository.org'
+}
 
 # A list of architectures to test.
 TARGET_ARCHS = ['amd64']
@@ -15,16 +17,13 @@ TARGET_DISTS = {
                                   ('debian', 'sid', 'non-free'),
                                   ('urepo', 'sid', 'main')],
 
-    ('urepo', 'bullseye', 'main'): [('debian', 'bullseye', 'main'),
-                                   ('debian', 'bullseye-backports', 'main'),
-                                 ],
-    ('urepo', 'bullseye', 'meta'): [('debian', 'bullseye', 'main'),
-                                    ('debian', 'bullseye-backports', 'main'),
-                                    ('urepo', 'bullseye', 'main'),
+    ('urepo', 'bookworm', 'main'): [('debian', 'bookworm', 'main')],
+    ('urepo', 'bookworm', 'meta'): [('debian', 'bookworm', 'main'),
+                                    ('urepo', 'bookworm', 'main'),
                                   ],
-    ('urepo', 'bullseye', 'imports'): [('debian', 'bullseye', 'main'),
-                                      ('debian', 'bullseye', 'contrib'),
-                                      ('debian', 'bullseye', 'non-free'),
-                                      ('urepo', 'bullseye', 'main'),
+    ('urepo', 'bookworm', 'imports'): [('debian', 'bookworm', 'main'),
+                                      ('debian', 'bookworm', 'contrib'),
+                                      ('debian', 'bookworm', 'non-free'),
+                                      ('urepo', 'bookworm', 'main'),
                                   ],
 }
