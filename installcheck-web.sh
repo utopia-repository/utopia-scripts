@@ -12,7 +12,7 @@ mkdir -p "$OUTPUT_DIR" || exit 1
 cd "$OUTPUT_DIR" || exit 1
 
 # TODO: this should report if some Packages list failed to download
-"$script_dir"/installcheck.py
+"$script_dir"/installcheck.py "$@"
 
 webhook_text=""
 for report in *.txt; do
