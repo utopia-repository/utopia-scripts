@@ -25,7 +25,7 @@ OUTDIR = '/srv/aptly-web/sndiff'
 
 # Formats the text when announcing
 # 0 = target dist, 1 = old snapshot, 2 = new snapshot, 3 = snapshot diff filename
-ANNOUNCE_FORMAT = 'New packages released for {0}: {1} -> {2} https://deb.utopia-repository.org/sndiff/{3}'
+ANNOUNCE_FORMAT = 'New packages released for {0}: {1} -> {2} https://deb-master.utopia-repository.org/sndiff/{3}'
 
 # Sets the format for diff formats. 0 = target dist, 1 = old snapshot name, 2 = new snapshot name
 DIFF_FILENAME_FORMAT = '{1}_{2}.txt'
