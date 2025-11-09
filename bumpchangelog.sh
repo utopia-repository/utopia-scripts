@@ -2,9 +2,9 @@
 set -e
 
 if [[ -z "$1" ]]; then
-	echo "usage: $0 <new package version>"
+    echo "usage: $0 <new package version>"
     echo "Bump a Debian package's changelog version and commit the change to git"
-	exit 1
+    exit 1
 fi
 
 ver="$1"

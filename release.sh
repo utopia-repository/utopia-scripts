@@ -15,5 +15,5 @@ set -x
 dch -r --no-force-save-on-release --distribution "$dist"
 git commit debian/changelog -m "Release $ver to $dist"
 if [[ -z "$NOTAG" ]]; then
-	git tag -s "debian/$ver" -m "Debian release $ver"
+	git tag -s "debian/${ver//[~]/_}" -m "Debian release $ver" -f
 fi
