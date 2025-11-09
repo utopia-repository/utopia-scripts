@@ -7,4 +7,4 @@ aptly-snapshots*.list*
 .directory
 
 aptlylist*.yaml
-!*.example.yaml
+!aptlylist.example.yaml

@@ -9,10 +9,9 @@ URL_BASE="https://deb-master.utopia-repository.org/installcheck/${DATE_PART}"
 script_dir="$(realpath "${0%/*}")"
 
 mkdir -p "$OUTPUT_DIR" || exit 1
-cd "$OUTPUT_DIR" || exit 1
 
 # TODO: this should report if some Packages list failed to download
-"$script_dir"/installcheck.py "$@"
+"$script_dir"/installcheck.py -o "$OUTPUT_DIR" "$@"
 
 webhook_text=""
 for report in *.txt; do
