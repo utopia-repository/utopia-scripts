@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
+from collections import defaultdict
 import sys
 import subprocess
-import pipes
-from collections import defaultdict
-import re
 import time
 
 def _error():
