@@ -3,31 +3,30 @@
 Installability checker for Apt repositories, using dose-debcheck as a backend.
 
 By default, this downloads Packages files for the relevant distributions into a temporary folder
-(as Packages_REPO_DIST_SUITE_ARCH) and outputs results as Installcheck_REPO_DIST_SUITE_ARCH.txt in the current folder.
+(as Packages_REPO_DIST_SUITE_ARCH) and outputs results as Installcheck_REPO_DIST_SUITE_ARCH.txt
+in the current folder.
 """
 
 import argparse
+import collections
+import concurrent.futures
 import gzip
 import lzma
-import multiprocessing
 import os
 import shutil
 import subprocess
-import sys
 import tempfile
 import traceback
 
 import requests
+import yaml
 
-try:
-    from installcheck_conf import *
-except ImportError:
-    print("Error: Could not load config file from installcheck_conf.py", file=sys.stderr)
-    traceback.print_exc()
-    sys.exit(1)
-
-manager = multiprocessing.Manager()
-PACKAGES_FILES = manager.dict()
+RepoTarget = collections.namedtuple('RepoTarget', [
+    'repo_name',
+    'distribution',
+    'suite',
+    'architecture'
+])
 
 _ARCHIVE_FORMATS = {
     'xz': lzma.decompress,
@@ -35,9 +34,9 @@ _ARCHIVE_FORMATS = {
 }
 def try_download_packages_file(link, filename, extension):
     link = f'{link}.{extension}'
-    print('Getting packages link %s' % link)
+    print('Getting packages link', link)
     try:
-        r = requests.get(link)
+        r = requests.get(link, timeout=10)
         r.raise_for_status()  # raise if not success
     except requests.exceptions.RequestException:
         return False
@@ -53,78 +52,141 @@ def try_download_packages_file(link, filename, extension):
         return False
     return True
 
-def download_packages_file(repo, dist, suite, arch, skip_download=False):
-    """
-    Gets the Packages file given the repository, distribution, suite, and
-    architecture.
-    """
-    # http://cdn-fastly.deb.debian.org/debian/dists/sid/main/binary-amd64/
-    link = '%s/dists/%s/%s/binary-%s/Packages' % (REPOS[repo], dist, suite, arch)
-    filename = 'Packages_%s_%s_%s_%s' % (repo, dist, suite, arch)
+class InstallCheck():
 
-    if not skip_download:
-        for ext in _ARCHIVE_FORMATS:
-            if try_download_packages_file(link, filename, ext):
-                break
+    def __init__(self, config_path: str):
+        with open(config_path, encoding='utf8') as f:
+            self.config = yaml.safe_load(f)
+
+    @staticmethod
+    def get_packages_filename(target: RepoTarget) -> str:
+        """Get the temporary filename for a RepoTarget instance's Packages file"""
+        # pylint: disable=consider-using-f-string
+        return 'Packages_%s_%s_%s_%s' % target
+
+    def download_packages_file(self, target: RepoTarget, skip_download=False):
+        """
+        Gets the Packages file given the repository, distribution, suite, and
+        architecture.
+        """
+        url = self.config["repos"][target.repo_name]
+        # Example: http://deb.debian.org/debian/dists/sid/main/binary-amd64/
+        link = f'{url}/dists/{target.distribution}/{target.suite}/binary-{target.architecture}/Packages'
+        filename = self.get_packages_filename(target)
+
+        if not skip_download:
+            for ext in _ARCHIVE_FORMATS:
+                if try_download_packages_file(link, filename, ext):
+                    break
+            else:
+                print(f'Failed to download any package file for {filename}')
         else:
-            print(f'Failed to download any package file for {filename}')
-    else:
-        if os.path.isfile(filename):
-            print('Reusing Packages file %s' % filename)
-        else:
-            print('Missing Packages file %s; some tests may be skipped!' % filename)
+            if os.path.isfile(filename):
+                print('Reusing Packages file %s' % filename)
+            else:
+                print('Missing Packages file %s; some tests may be skipped!' % filename)
+
+    def get_deps(self, target: RepoTarget) -> set[RepoTarget]:
+        """Get dependencies for a RepoTarget"""
+        deps = self.config["suite_dependencies"][f"{target.repo_name}/{target.suite}"]
+        results = set()
+        for dep in deps:
+            try:
+                dep_repo_name, dep_suite = dep.split('/', 1)
+            except ValueError as e:
+                raise ValueError(f'Invalid dependency name {dep}') from e
+            results.add(RepoTarget(
+                dep_repo_name,
+                target.distribution,
+                dep_suite,
+                target.architecture,
+            ))
+        return results
+
+    def test_dist(self, target: RepoTarget, outfilename: str):
+        """
+        Runs dose-debcheck on a repo, dist, suite, and arch pair.
+        """
+        target_filename = self.get_packages_filename(target)
+        if not os.path.exists(target_filename):
+            print(f"Skipping unavailable dist {target}")
             return
 
-    global PACKAGES_FILES
-    PACKAGES_FILES[(repo, dist, suite, arch)] = filename
-    return filename
+        deps = self.get_deps(target)
+        # What we what to run is:
+        #  dose-debcheck -fe Packages_of_target --bg Packages_of_dependency_1
+        #  --bg Packages_of_dependency_2 ...
+        cmd = ['dose-debcheck', '-fe', target_filename]
+        for dep_target in deps:
+            dep_target_filename = self.get_packages_filename(dep_target)
+            if not os.path.exists(dep_target_filename):
+                print(f"Skipping dist {target} due to unavailable dependency {dep_target}")
+                return
 
-def test_dist(repo, dist, suite, arch, outfilename=None):
-    """
-    Runs dose-debcheck on a repo, dist, suite, and arch pair.
-    """
-    if (repo, dist, suite, arch) not in PACKAGES_FILES:  # Unavailable combination
-        print("Skipping dist (%r, %r, %r, %r) as it is not available" % (repo, dist, suite, arch))
-        return
+            cmd += ['--bg', dep_target_filename]
 
-    deps = TARGET_DISTS[(repo, dist, suite)]
-    # What we what to run is:
-    #  dose-debcheck -fe Packages_of_target --bg Packages_of_dependency_1
-    #  --bg Packages_of_dependency_2 ...
-    cmd = ['dose-debcheck', '-fe', PACKAGES_FILES[(repo, dist, suite, arch)]]
-    for dep_target in deps:
-        dep = (dep_target[0], dep_target[1], dep_target[2], arch)
+        print('Running command', cmd)
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 
-        if dep not in PACKAGES_FILES:  # Unavailable dependency
-            print("Skipping dist (%r, %r, %r, %r) as dependency %r not available" % (repo, dist, suite, arch, dep))
-            return
-        cmd += ['--bg', PACKAGES_FILES[dep]]
+        # Read stdout as dose-debcheck runs instead of only returning results at the end.
+        lines = []  # XXX: is storing the output text this way this efficient?
+        for line in process.stdout:
+            line = line.decode()
+            print(line, end='')
+            lines.append(line)
 
-    print('Running command', cmd)
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        process.wait()
+        print('process returncode: %s' % process.returncode)
+        if process.returncode:
+            with open(outfilename, 'w', encoding='utf8') as outfile:
+                # Only write reports for combinations that fail testing.
+                if lines:
+                    outfile.write(f'Results for {target}:\n')
+                outfile.writelines(lines)
 
-    # Read stdout as dose-debcheck runs instead of only returning results at the end.
-    lines = []  # XXX: is storing the output text this way this efficient?
-    for line in process.stdout:
-        line = line.decode()
-        print(line, end='')
-        lines.append(line)
+    def run(self, outdir: str, skip_download=False, max_workers=1, tmpdir=None):
+        to_download = set()
+        targets = set()
+        for target_dist_info in self.config["target_dists"]:
+            for suite in target_dist_info["suites"]:
+                for arch in self.config["target_archs"]:
+                    target = RepoTarget(
+                        target_dist_info["repo"],
+                        target_dist_info["distribution"],
+                        suite,
+                        arch
+                    )
+                    targets.add(target)
+                    to_download.add(target)
+                    to_download |= self.get_deps(target)
 
-    process.wait()
-    print('process returncode: %s' % process.returncode)
-    if outfilename is not None and process.returncode != 0:
-        with open(outfilename, 'w') as outfile:
-            # Only write reports for combinations that fail testing.
-            if lines:
-                outfile.write('Results for %s, %s, %s:\n' % (repo, dist, suite))
-            outfile.writelines(lines)
+        if tmpdir:
+            os.chdir(tmpdir)
 
-if __name__ == '__main__':
+        print('targets:', targets)
+        print('to_download:', to_download)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            download_futures = {
+                executor.submit(self.download_packages_file, target, skip_download=skip_download)
+                for target in to_download
+            }
+            concurrent.futures.wait(download_futures)
+
+            test_dist_futures = {
+                # pylint: disable=consider-using-f-string
+                executor.submit(self.test_dist, target,
+                                os.path.join(outdir, 'Installcheck_%s_%s_%s_%s.txt' % target))
+                for target in targets
+            }
+            concurrent.futures.wait(test_dist_futures)
+
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("-t", "--tempdir", help="sets the temporary directory to download Packages files into", type=str, default=tempfile.mkdtemp())
     parser.add_argument("-o", "--outdir", help="sets the output directory to write results to", type=str, default=os.getcwd())
     parser.add_argument("-s", "--skip-download", help="skips downloading new Packages file (most useful with a custom tempdir)", action='store_true')
     parser.add_argument("-p", "--processes", help="amount of processes to use (defaults to amount of CPU cores)", type=int, default=os.cpu_count() or 1)
+    parser.add_argument("-c", "--config", help="path to config file", default='installcheck.yml')
     args = parser.parse_args()
 
     if not shutil.which('dose-debcheck'):
@@ -133,42 +195,8 @@ if __name__ == '__main__':
     print('Using %s as tempdir' % args.tempdir)
     print('Using %s as outdir' % args.outdir)
 
-    os.chdir(args.tempdir)
+    runner = InstallCheck(args.config)
+    runner.run(args.outdir, skip_download=args.skip_download, max_workers=args.processes, tmpdir=args.tempdir)
 
-    needed_packages = set()
-
-    for arch in TARGET_ARCHS:
-        for target in TARGET_DISTS:
-            # Store these as a 4-item tuple: repo name, distribution, suite, and architecture
-            repoidx = (target[0], target[1], target[2], arch)
-            needed_packages.add(repoidx)
-
-            # Process this target's dependencies as well
-            for dependency in TARGET_DISTS[target]:
-                repoidx = (dependency[0], dependency[1], dependency[2], arch)
-                needed_packages.add(repoidx)
-
-    def download_wrapper(pkg):
-        print('Running download_packages_file in Process %s' % multiprocessing.current_process())
-        download_packages_file(*pkg, skip_download=args.skip_download)
-
-    def test_dist_wrapper(target, outfile=None, **kwargs):
-        outfile = 'Installcheck_%s_%s_%s_%s.txt' % target
-        outfile = os.path.join(args.outdir, outfile)
-
-        print('Writing installability check results for target %s to %s' % (target, outfile))
-        print('Running test_dist in Process %s' % multiprocessing.current_process())
-        test_dist(*target, outfilename=outfile)
-
-    with multiprocessing.Pool(args.processes) as pool:
-        # Download all the Packages files we need in separate worker processes, to speed up the process.
-        pool.map(download_wrapper, needed_packages)
-
-        # Build a list of targets to run
-        real_targets = []
-        for arch in TARGET_ARCHS:
-            for target in TARGET_DISTS:
-                real_targets.append((target[0], target[1], target[2], arch))
-
-        # Run them!
-        pool.map(test_dist_wrapper, real_targets)
+if __name__ == '__main__':
+    main()

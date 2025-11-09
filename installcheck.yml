@@ -1,0 +1,20 @@
+repos:
+  debian: 'http://deb.debian.org/debian'
+  urepo: 'https://deb.utopia-repository.org'
+
+target_archs:
+  - amd64
+
+target_dists:
+  - repo: urepo
+    distribution: sid
+    suites: [main, meta, imports]
+  - repo: urepo
+    distribution: trixie
+    suites: [main, meta, imports]
+
+suite_dependencies:
+  urepo/main: [debian/main]
+  urepo/meta: [debian/main, urepo/main]
+  urepo/imports: [debian/main, debian/contrib, debian/non-free-firmware,
+                  debian/non-free, urepo/main]
